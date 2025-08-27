@@ -1,18 +1,5 @@
-##############################################
-# Enhanced Whack-A-Zombie Game
-# 
-# Improvements:
-# - Removed artificial rapid-click prevention
-# - Relies on pygame's event system for clean click handling
-# - Hit flash timer removed from hit detection
-# - Fixed hit vs kill counting logic
-# - Added separate kills stat
-##############################################
-
 import pygame
 import random
-import math
-import time
 from pygame import *
 from Classes.GameDefine import Constants
 from Classes.GameDefine import Zombie
