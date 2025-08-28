@@ -1,3 +1,9 @@
+"""UI components: HUD and Game Over screen for Whack-a-Zombie.
+
+Provides readouts for level progression, lives, hits, misses, accuracy, FPS,
+and pause/mute indicators. Uses right/left HUD layout to avoid the play area.
+"""
+
 import pygame
 import os
 
@@ -25,16 +31,6 @@ class HUD:
             except Exception as e:
                 print(f"Failed to load brain icon: {e}")
         return None
-
-    def draw_life_icon(self, surf: pygame.Surface, x: int, y: int) -> None:
-        """Draw a heart/brain icon representing a life."""
-        # Draw a simple heart shape as life icon
-        points = [
-            (x, y+8), (x-8, y), (x-12, y-4), (x-8, y-8),
-            (x, y-6), (x+8, y-8), (x+12, y-4), (x+8, y), (x, y+8)
-        ]
-        pygame.draw.polygon(surf, (220, 50, 50), points)
-        pygame.draw.polygon(surf, (255, 100, 100), points, 2)
 
     def draw(self, surf: pygame.Surface, hits: int, misses: int, lives: int, 
              level: int, zombies_killed: int, show_fps: bool = False, fps: float = 0.0, 

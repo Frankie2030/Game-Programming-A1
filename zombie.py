@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Zombie entity: lifecycle, animation, hit testing, and rendering.
+
+A zombie spawns, plays idle animation, times out to attack if not hit (costing
+the player a life), and then despawns with animation. Uses sprite sheets if
+available, but degrades gracefully.
+"""
+
 import math
 import os
 import pygame

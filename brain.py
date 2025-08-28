@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Brain pickup entity that grants a life on click.
+
+Fades in, idles until lifetime expires or clicked, then fades out. Simple
+rectangle hitbox based on sprite bounds.
+"""
+
 import os
 import pygame
 
@@ -39,6 +45,8 @@ class Brain:
             try:
                 original = pygame.image.load(BRAIN_PATH).convert_alpha()
                 original_w, original_h = original.get_size()
+                
+                print(f"Original brain sprite size: {original_w}x{original_h}")
                 
                 # Scale the brain sprite
                 new_w = int(original_w * cls.SPRITE_SCALE)

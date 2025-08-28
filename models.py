@@ -1,3 +1,5 @@
+"""Lightweight data models used across the game."""
+
 from dataclasses import dataclass
 
 @dataclass(frozen=True)

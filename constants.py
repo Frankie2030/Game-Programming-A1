@@ -1,3 +1,8 @@
+"""Game-wide constants for Whack-a-Zombie.
+
+Screen dimensions, colors, font sizes, tuning knobs for spawn/lifetime and
+leveling, asset paths, and logging configuration.
+"""
 import os
 
 WIDTH, HEIGHT = 960, 540           # 16:9 playfield
@@ -51,3 +56,4 @@ LEVEL_UP_SFX_PATH = os.path.join(ASSETS_DIR, "level_up.wav")  # level up sound e
 HAMMER_PATH = os.path.join(ASSETS_DIR, "hammer.png")     # optional hammer cursor
 ZOMBIE_SPRITE_PATH = os.path.join(ASSETS_DIR, "ZombieSprite_166x144.png")  # zombie sprite sheet
 BRAIN_PATH = os.path.join(ASSETS_DIR, "brain.png")       # brain pickup sprite
+BACKGROUND_PATH = os.path.join(ASSETS_DIR, "game_background.png")  # main game background

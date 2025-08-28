@@ -1,3 +1,5 @@
+"""Markdown logger for gameplay events (clicks, level-ups)."""
+
 import datetime
 
 class GameLogger:

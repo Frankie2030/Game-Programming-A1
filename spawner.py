@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Spawn orchestration for zombies and brain pickups.
+
+Encapsulates spawn cadence, level-based scaling, and avoiding occupied spawn
+points. Timing uses ms ticks to decouple from frame rate.
+"""
+
 import random
 
 from constants import (
@@ -90,6 +96,9 @@ class Spawner:
             if available_spawns:
                 spawn = random.choice(available_spawns)
                 lifetime = MAX_LIFETIME_MS - (level - 1) * LEVEL_LIFETIME_DECREASE
+                # Robustness: ensure lifetime never drops below configured minimum
+                from constants import MIN_ZOMBIE_LIFETIME  # local import to avoid cycles
+                lifetime = max(MIN_ZOMBIE_LIFETIME, lifetime)
                 zombies.append(Zombie(spawn, born_at_ms=now_ms, lifetime_ms=lifetime))
             
             # Always schedule next spawn, even if we couldn't spawn this time

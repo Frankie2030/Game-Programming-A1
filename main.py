@@ -1,11 +1,13 @@
-"""
+"""Game entry point and loop orchestration for Whack-a-Zombie.
+
 Notes
 -----
-- Uses a fixed timestep-ish loop (capped FPS) and all timings in milliseconds using
-  ``pygame.time.get_ticks()``, so spawn timing is independent of frame rate.
-- Assets are procedurally drawn to avoid external dependencies; you can drop your
-  own sprites / audio in ``assets/`` and adjust paths if desired.
-- Code is documented with professional docstrings and targeted inline comments.
+- Uses a capped FPS loop and all timings in milliseconds via
+  ``pygame.time.get_ticks()``, keeping spawn timing independent of frame rate.
+- Optional assets can be placed in ``assets/``. The game gracefully handles
+  missing audio or sprites.
+- Includes start screen with volume sliders, HUD, and a restartable game over
+  screen.
 
 Run
 ---
@@ -43,6 +45,10 @@ class Game:
         self.font_small = pygame.font.Font(FONT_NAME, FONT_SIZE_MEDIUM)
         self.font_big = pygame.font.Font(FONT_NAME, FONT_SIZE_LARGE)
 
+        # Load background image
+        self.background_img: pygame.Surface | None = None
+        self.load_background()
+        
         self.spawn_points: list[SpawnPoint] = self.make_spawn_points()
         self.spawner = Spawner(self.spawn_points)
 
@@ -125,56 +131,66 @@ class Game:
         if os.path.exists(HAMMER_PATH):
             self.hammer_cursor = pygame.image.load(HAMMER_PATH).convert_alpha()
             self.hammer_cursor = pygame.transform.scale(self.hammer_cursor, (40, 40))
+
+    def load_background(self) -> None:
+        """
+        Load and scale the game background image.
+        """
+        if os.path.exists(BACKGROUND_PATH):
+            try:
+                img = pygame.image.load(BACKGROUND_PATH).convert()
+                self.background_img = pygame.transform.scale(img, (WIDTH, HEIGHT))
+                print(f"Successfully loaded background from: {BACKGROUND_PATH}")
+            except Exception as e:
+                print(f"Failed to load background: {e}")
+                self.background_img = None
+        else:
+            print(f"Background image not found: {BACKGROUND_PATH}")
+            self.background_img = None
     
     def make_spawn_points(self) -> list[SpawnPoint]:
         """
-        9 spawn points (3x3) positioned in the center play area,
-        avoiding left/right HUD areas and top title/instructions.
+        20 spawn points (4 rows x 5 columns) positioned to align with tombs in background image.
+        The background image is square but the game window is rectangular (960x540),
+        so we need to account for the stretching when positioning spawn points.
         """
-        cols, rows = 3, 3
+        cols, rows = 5, 4  # 5 columns, 4 rows = 20 total spawn points
 
-        # UI areas to avoid
-        LEFT_HUD_WIDTH = 160   # Left sidebar for level/lives
-        RIGHT_HUD_WIDTH = 160  # Right sidebar for stats
-        TOP_HEIGHT = 80        # Top area for centered title/instructions
-        BOTTOM_PAD = 40        # Bottom padding
-        GRID_INNER = 30        # Inner padding for grid
+        # The background image is square, but the game window is 960x540 (16:9 ratio)
+        # This means the background is stretched horizontally, affecting tombstone positions.
+        # We need to find the actual pixel coordinates for the center of the first tombstone
+        # and the spacing between them based on the visual layout in the stretched image.
 
-        # Calculate centered play area
-        left = LEFT_HUD_WIDTH + GRID_INNER
-        right = WIDTH - RIGHT_HUD_WIDTH - GRID_INNER
-        top = TOP_HEIGHT + GRID_INNER
-        bottom = HEIGHT - BOTTOM_PAD
+        # Visual estimation from the provided screenshot (960x540 window):
+        # Center of the top-left tombstone:
+        #   X-coordinate: Roughly 200-210 pixels from the left edge.
+        #   Y-coordinate: Roughly 150-160 pixels from the top edge.
+        # Horizontal spacing between tombstone centers: Roughly 140-150 pixels.
+        # Vertical spacing between tombstone centers: Roughly 90-100 pixels.
 
-        play_w = max(300, right - left)
-        play_h = max(250, bottom - top)
+        # Let's use these refined estimates:
+        FIRST_COL_CENTER_X = 210  # X-coordinate of the center of the first column's tombstones
+        COL_SPACING = 140         # Horizontal distance between centers of adjacent tombstones
 
-        # Center the grid within the play area
-        center_x = (left + right) // 2
-        center_y = (top + bottom) // 2
-        
-        # Calculate grid spacing
-        grid_w = min(play_w - 40, 400)  # Maximum grid width
-        grid_h = min(play_h - 40, 300)  # Maximum grid height
-        
-        cell_w = grid_w // (cols - 1) if cols > 1 else grid_w
-        cell_h = grid_h // (rows - 1) if rows > 1 else grid_h
-        
-        # Starting position (top-left of grid)
-        start_x = center_x - grid_w // 2
-        start_y = center_y - grid_h // 2
+        FIRST_ROW_CENTER_Y = 155  # Y-coordinate of the center of the first row's tombstones
+        ROW_SPACING = 95          # Vertical distance between centers of adjacent tombstones
 
-        # Hole radius based on available space
-        base = min(cell_w, cell_h)
-        radius = max(35, min(45, int(base * 0.35)))
+        # Spawn point radius - adjusted to fit zombie base on tombstone
+        SPAWN_RADIUS = 30 # This might need further fine-tuning with zombie sprite size
 
-        points: list[SpawnPoint] = []
-        for j in range(rows):
-            for i in range(cols):
-                x = start_x + i * cell_w
-                y = start_y + j * cell_h
-                points.append(SpawnPoint((x, y), radius))
-        return points  # 9 spawn points
+        spawn_points = []
+        for j in range(rows):  # Iterate through rows
+            for i in range(cols):  # Iterate through columns
+                x = FIRST_COL_CENTER_X + i * COL_SPACING
+                y = FIRST_ROW_CENTER_Y + j * ROW_SPACING
+                spawn_points.append(SpawnPoint((x, y), radius=SPAWN_RADIUS))
+
+        # Debugging output to verify positions
+        print(f"Calculated Spawn Points ({len(spawn_points)}):")
+        for idx, sp in enumerate(spawn_points):
+            print(f"  {idx}: Pos={sp.pos}, Radius={sp.radius}")
+
+        return spawn_points  # 20 spawn points (4x5 grid)
 
     def init_audio(self) -> None:
         """
@@ -469,10 +485,7 @@ class Game:
         now_ms : int
             Current time in milliseconds
         """
-        if self.snd_hit and not self.muted:
-            self.snd_hit.play()
-            
-        # Check for brain pickup first (higher priority)
+        # Check for brain pickup first (higher priority). Do not play hit SFX for pickups.
         for brain in reversed(self.brains):
             if not brain.picked_up and not brain.dead and brain.contains_point(pos):
                 brain.mark_picked_up(now_ms)
@@ -490,12 +503,17 @@ class Game:
                     
                 return
         
-        # Check for zombie hit
+        # Check for zombie hit (play hit SFX here)
         for z in reversed(self.zombies):
             if not z.hit and not z.attacking and z.contains_point(pos, now_ms):
                 z.mark_hit(now_ms)
                 self.hits += 1
                 self.zombies_killed += 1
+                if self.snd_hit and not self.muted:
+                    try:
+                        self.snd_hit.play()
+                    except Exception:
+                        pass
                 
                 # Log the successful hit
                 self.logger.log_click(pos, True, f"Zombie at spawn {z.spawn.pos}")
@@ -535,21 +553,25 @@ class Game:
             self.screen.blit(flash_surface, (0, 0))
 
     def draw_background(self, surf: pygame.Surface) -> None:
-        """Draw the background and spawn holes (rings + shadows)."""
-        surf.fill(BG_COLOR)
+        """Draw the game background image."""
+        if self.background_img:
+            surf.blit(self.background_img, (0, 0))
+        else:
+            # Fallback to solid color if background image not available
+            surf.fill(BG_COLOR)
+            
+            # Subtle vignette / gradient rectangles for polish (no perf cost)
+            rect = pygame.Rect(0, 0, WIDTH, HEIGHT)
+            pygame.draw.rect(surf, (20, 22, 27), rect, width=24, border_radius=18)
 
-        # Subtle vignette / gradient rectangles for polish (no perf cost)
-        rect = pygame.Rect(0, 0, WIDTH, HEIGHT)
-        pygame.draw.rect(surf, (20, 22, 27), rect, width=24, border_radius=18)
-
-        # Draw holes
-        for sp in self.spawn_points:
-            x, y = sp.pos
-            r = sp.radius
-            # outer ring
-            pygame.draw.circle(surf, HOLE_RING, (x, y), r+6)
-            # inner dark hole
-            pygame.draw.circle(surf, HOLE_COLOR, (x, y), r)
+            # Draw holes as fallback
+            for sp in self.spawn_points:
+                x, y = sp.pos
+                r = sp.radius
+                # outer ring
+                pygame.draw.circle(surf, HOLE_RING, (x, y), r+6)
+                # inner dark hole
+                pygame.draw.circle(surf, HOLE_COLOR, (x, y), r)
 
     def draw(self, now_ms: int, fps: float) -> None:
         """
