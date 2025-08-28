@@ -1,6 +1,0 @@
-- kiếm asset bg với mộ
-- zombie head timer
-- log mouseclick + timestamp
-- chặn double counting on a single click
-- docstring
-- màn hình start + chỉnh âm lương

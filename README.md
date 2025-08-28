@@ -1,1 +1,1 @@
-# HK251_Game-Programming
+# About Assignment 1
