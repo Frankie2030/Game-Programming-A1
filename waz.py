@@ -27,7 +27,6 @@ import datetime
 import math
 import os
 import random
-import sys
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 
@@ -50,6 +49,12 @@ FLASH_COLOR = (255, 235, 90)       # hit flash accent
 HUD_PADDING = 12
 FONT_NAME = "freesansbold.ttf"
 
+# Font Size Constants
+FONT_SIZE_SMALL = 14
+FONT_SIZE_MEDIUM = 16
+FONT_SIZE_LARGE = 22
+FONT_SIZE_TITLE = 24
+
 # Game Settings
 INITIAL_LIVES = 3                  # Starting lives
 ATTACK_ANIM_MS = 300               # Zombie attack animation duration
@@ -70,12 +75,11 @@ MIN_ZOMBIE_LIFETIME = 500          # Minimum zombie lifetime
 
 # Log file settings
 LOG_FILE = os.path.join(os.path.dirname(__file__), "log.md")
-
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 MUSIC_PATH = os.path.join(ASSETS_DIR, "bg_music.mp3")    # optional
 HIT_SFX_PATH = os.path.join(ASSETS_DIR, "hit.mp3")       # optional
 HAMMER_PATH = os.path.join(ASSETS_DIR, "hammer.png")     # optional hammer cursor
-ZOMBIE_SPRITE_PATH = os.path.join(ASSETS_DIR, "zombiesprite_166x144.png")  # zombie sprite sheet
+ZOMBIE_SPRITE_PATH = os.path.join(ASSETS_DIR, "ZombieSprite_166x144.png")  # zombie sprite sheet
 
 
 # --------------------------------------------------------------------------------------
@@ -111,9 +115,9 @@ class Zombie:
     Timings are driven via pygame.time.get_ticks() (ms-precise, frame-rate independent).
     """
 
-    SPAWN_ANIM_MS = 120
-    DESPAWN_ANIM_MS = 160
-    HIT_FLASH_MS = 120
+    SPAWN_ANIM_MS = 150
+    DESPAWN_ANIM_MS = 250
+    HIT_FLASH_MS = 150
     
     # Class variables for sprite management
     sprite_sheet = None
@@ -142,8 +146,7 @@ class Zombie:
                 
                 print(f"Individual sprite size: {sprite_width}x{sprite_height}")
                 
-                # Pick specific frames for different states:
-                # Normal idle frames - let's use some walking frames from first few rows
+                # Normal idle frames
                 normal_positions = [
                     (0, 0), (1, 0), (2, 0), (3, 0),  # First row
                     (0, 1), (1, 1), (2, 1), (3, 1),  # Second row
@@ -158,7 +161,7 @@ class Zombie:
                     scaled_frame = pygame.transform.scale(frame, (80, 70))
                     cls.normal_frames.append(scaled_frame)
                 
-                # Attack frames - use different poses, maybe from middle rows
+                # Attack frames
                 attack_positions = [
                     (4, 2), (5, 2), (6, 2), (7, 2),  # Middle area
                 ]
@@ -171,7 +174,7 @@ class Zombie:
                     scaled_frame = pygame.transform.scale(frame, (80, 70))
                     cls.attack_frames.append(scaled_frame)
                 
-                # Death frames - use frames from bottom rows (look like falling/dead)  
+                # Death frames - use frames from bottom rows  
                 death_positions = [
                     (0, 10), (1, 10), (2, 10), (3, 10),  # Bottom rows
                 ]
@@ -475,7 +478,7 @@ class Zombie:
 
     def contains_point(self, point: Tuple[int, int], now_ms: int) -> bool:
         """
-        Circle/ellipse-based hit test. Only allow hits when zombie is not attacking.
+        Rectangle-based hit test for zombie sprites. Only allow hits when zombie is not attacking.
 
         Parameters
         ----------
@@ -487,29 +490,33 @@ class Zombie:
         Returns
         -------
         bool
-            True if the click lies within the scaled ellipse head and zombie is hittable.
+            True if the click lies within the zombie sprite rectangle and zombie is hittable.
         """
         # Can't hit attacking zombies
         if self.attacking:
             return False
             
+        # Get zombie center position
         cx, cy = self.spawn.pos
-        base_r = int(self.spawn.radius * 0.9)
         
-        # Apply vertical offset to hit detection area
+        # Apply vertical offset to hit detection area (zombies rise/sink with animations)
         vertical_offset = self.get_vertical_offset(now_ms)
         adjusted_cy = cy + vertical_offset
         
-        # Use fixed size for hit detection (no scaling)
-        r_x = base_r
-        r_y = base_r
-
-        # Check point inside ellipse: ((x-cx)/rx)^2 + ((y-cy)/ry)^2 <= 1
+        # Zombie sprite dimensions (based on scaled sprite size)
+        sprite_width = 80   # Width of scaled zombie sprite
+        sprite_height = 70  # Height of scaled zombie sprite
+        
+        # Calculate rectangle bounds (top-left corner of sprite rectangle)
+        # Since sprite is centered at (cx, adjusted_cy)
+        rect_left = cx - sprite_width // 2
+        rect_top = adjusted_cy - sprite_height // 2
+        rect_right = rect_left + sprite_width
+        rect_bottom = rect_top + sprite_height
+        
+        # Check if point is within sprite rectangle
         px, py = point
-        dx = (px - cx) / float(r_x)
-        dy = (py - adjusted_cy) / float(r_y)
-        return (dx*dx + dy*dy) <= 1.0
-
+        return (rect_left <= px <= rect_right) and (rect_top <= py <= rect_bottom)
 
 class GameLogger:
     """Handles logging of game events to markdown file."""
@@ -581,11 +588,11 @@ class GameLogger:
 
 
 class HUD:
-    """Heads-Up Display to render hits, misses, accuracy, lives, and optional FPS."""
+    """Heads-Up Display with left/right split layout."""
 
     def __init__(self, font: pygame.font.Font) -> None:
         self.font = font
-        self.small_font = pygame.font.Font(FONT_NAME, 14)
+        self.small_font = pygame.font.Font(FONT_NAME, FONT_SIZE_SMALL)
 
     def draw_life_icon(self, surf: pygame.Surface, x: int, y: int) -> None:
         """Draw a heart/brain icon representing a life."""
@@ -598,55 +605,73 @@ class HUD:
         pygame.draw.polygon(surf, (255, 100, 100), points, 2)
 
     def draw(self, surf: pygame.Surface, hits: int, misses: int, lives: int, 
-             level: int, zombies_killed: int, show_fps: bool = False, fps: float = 0.0, paused: bool = False) -> None:
-        """Render a comprehensive HUD with level information."""
+             level: int, zombies_killed: int, show_fps: bool = False, fps: float = 0.0, 
+             paused: bool = False, muted: bool = False) -> None:
+        """Render a comprehensive HUD with left/right split layout."""
         total = hits + misses
         acc = (hits / total * 100.0) if total > 0 else 0.0
         
-        # Main stats
-        lines = [
-            f"Hits:   {hits}",
-            f"Misses: {misses}",
-            f"Accuracy: {acc:.1f}%",
-            f"Level: {level}",
-            f"Zombies Killed: {zombies_killed}"
-        ]
-        x, y = HUD_PADDING, HUD_PADDING
-        for line in lines:
-            text_surf = self.font.render(line, True, TEXT_COLOR)
-            surf.blit(text_surf, (x, y))
-            y += text_surf.get_height() + 4
-
+        # LEFT SIDE: Level and Lives
+        left_x, left_y = HUD_PADDING, HUD_PADDING
+        
+        # Level display
+        level_text = self.font.render(f"Level: {level}", True, TEXT_COLOR)
+        surf.blit(level_text, (left_x, left_y))
+        left_y += level_text.get_height() + 4
+        
         # Progress to next level
         if level < MAX_LEVEL:
             zombies_in_level = zombies_killed % ZOMBIES_PER_LEVEL
             progress_text = f"Progress: {zombies_in_level}/{ZOMBIES_PER_LEVEL}"
             progress_surf = self.small_font.render(progress_text, True, TEXT_COLOR)
-            surf.blit(progress_surf, (x, y))
-            
-            y += progress_surf.get_height() + 8
+            surf.blit(progress_surf, (left_x, left_y))
+            left_y += progress_surf.get_height() + 8
         else:
             max_level_text = self.font.render("MAX LEVEL!", True, (255, 215, 0))
-            surf.blit(max_level_text, (x, y))
-            y += max_level_text.get_height() + 8
-
+            surf.blit(max_level_text, (left_x, left_y))
+            left_y += max_level_text.get_height() + 8
+        
         # Lives display
         lives_text = self.font.render(f"Lives: {lives}", True, TEXT_COLOR)
-        surf.blit(lives_text, (x, y))
+        surf.blit(lives_text, (left_x, left_y))
         
         # Draw heart icons
-        heart_x = x + lives_text.get_width() + 10
+        heart_x = left_x + lives_text.get_width() + 10
         for i in range(lives):
-            self.draw_life_icon(surf, heart_x + i * 25, y + lives_text.get_height() // 2)
-        y += lives_text.get_height() + 8
-
-        # Optional FPS display
+            self.draw_life_icon(surf, heart_x + i * 25, left_y + lives_text.get_height() // 2)
+        
+        # RIGHT SIDE: Stats and optional indicators
+        right_x = WIDTH - 150  # Fixed distance from right edge
+        right_y = HUD_PADDING
+        
+        # Stats
+        right_stats = [
+            f"Hits: {hits}",
+            f"Misses: {misses}",
+            f"Accuracy: {acc:.1f}%",
+            f"Zombies Killed: {zombies_killed}"
+        ]
+        
+        for line in right_stats:
+            text_surf = self.font.render(line, True, TEXT_COLOR)
+            surf.blit(text_surf, (right_x, right_y))
+            right_y += text_surf.get_height() + 4
+        
+        # Optional FPS display (when F is toggled)
         if show_fps:
+            right_y += 4  # Extra spacing
             fps_color = (0, 255, 0) if fps >= 55 else (255, 255, 0) if fps >= 30 else (255, 0, 0)
             fps_text = self.small_font.render(f"FPS: {fps:.1f}", True, fps_color)
-            surf.blit(fps_text, (x, y))
+            surf.blit(fps_text, (right_x, right_y))
+            right_y += fps_text.get_height() + 4
+        
+        # Optional muted indicator (when M is toggled)
+        if muted:
+            right_y += 4  # Extra spacing  
+            muted_text = self.small_font.render("MUTED", True, (255, 150, 150))
+            surf.blit(muted_text, (right_x, right_y))
 
-        # Pause indicator
+        # Pause indicator (centered)
         if paused:
             pause_text = self.font.render("PAUSED", True, (255, 255, 100))
             text_rect = pause_text.get_rect(center=(surf.get_width()//2, 100))
@@ -727,9 +752,6 @@ class Spawner:
     Supports level-based difficulty scaling.
 
     Notes
-    -----
-    - We try to keep at most ``MAX_CONCURRENT_ZOMBIES`` active to match
-      the classic Whack-a-Mole pacing.
     - Spawn timing uses wall-clock ms to be independent of frame rate.
     - Difficulty increases with level: faster spawning and shorter lifetimes.
     """
@@ -814,8 +836,8 @@ class Game:
         pygame.display.set_caption("Whack-a-Zombie — Assignment 1")
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
-        self.font_small = pygame.font.Font(FONT_NAME, 16)
-        self.font_big = pygame.font.Font(FONT_NAME, 22)
+        self.font_small = pygame.font.Font(FONT_NAME, FONT_SIZE_MEDIUM)
+        self.font_big = pygame.font.Font(FONT_NAME, FONT_SIZE_LARGE)
 
         # Prepare spawn points (>= 6; we use a 3x3 grid minus center for clarity)
         self.spawn_points: List[SpawnPoint] = self._make_spawn_points()
@@ -871,8 +893,8 @@ class Game:
             self.level = new_level
             self.logger.log_level_up(self.level)
             print(f"Level up! Now level {self.level}")
-            # Could add level up sound effect here
-    
+            # Add level up sound effect (assets/level_up.wav)
+
     # --------------------------------- Setup ----------------------------------------
 
     def _load_hammer_cursor(self) -> None:
@@ -881,66 +903,56 @@ class Game:
         Tries to load hammer sprite from assets, falls back to procedural drawing.
         """
         if os.path.exists(HAMMER_PATH):
-            try:
-                self.hammer_cursor = pygame.image.load(HAMMER_PATH).convert_alpha()
-                self.hammer_cursor = pygame.transform.scale(self.hammer_cursor, (40, 40))
-            except Exception:
-                self._create_fallback_hammer()
-        else:
-            self._create_fallback_hammer()
+            self.hammer_cursor = pygame.image.load(HAMMER_PATH).convert_alpha()
+            self.hammer_cursor = pygame.transform.scale(self.hammer_cursor, (40, 40))
     
-    def _create_fallback_hammer(self) -> None:
-        """
-        Create a simple hammer cursor if asset not available.
-        Draws a basic hammer shape using pygame primitives.
-        """
-        self.hammer_cursor = pygame.Surface((40, 40), pygame.SRCALPHA)
-        # Handle
-        pygame.draw.rect(self.hammer_cursor, (101, 67, 33), (15, 10, 8, 25))
-        # Head
-        pygame.draw.rect(self.hammer_cursor, (150, 150, 150), (5, 5, 25, 15))
-        pygame.draw.rect(self.hammer_cursor, (100, 100, 100), (5, 5, 25, 15), 2)
-
     def _make_spawn_points(self) -> List[SpawnPoint]:
         """
-        9 spawn points (3x3) nằm gọn trong play area
-        đã chừa khoảng trống bên trái (HUD) và bên trên (instructions).
+        9 spawn points (3x3) positioned in the center play area,
+        avoiding left/right HUD areas and top title/instructions.
         """
         cols, rows = 3, 3
 
-        # Kích thước phần UI cần chừa
-        LEFT_HUD_WIDTH = 170   # độ rộng khu HUD bên trái
-        INSTR_HEIGHT   = 110   # chiều cao vùng text hướng dẫn ở trên
-        EDGE_PAD       = 50    # chừa thêm mép cửa sổ
-        GRID_INNER     = 40    # đẩy lỗ vào trong play area 1 chút
+        # UI areas to avoid
+        LEFT_HUD_WIDTH = 160   # Left sidebar for level/lives
+        RIGHT_HUD_WIDTH = 160  # Right sidebar for stats
+        TOP_HEIGHT = 80        # Top area for centered title/instructions
+        BOTTOM_PAD = 40        # Bottom padding
+        GRID_INNER = 30        # Inner padding for grid
 
-        # Tính play area: phải và dưới
-        left   = LEFT_HUD_WIDTH + EDGE_PAD
-        top    = INSTR_HEIGHT   + EDGE_PAD
-        right  = WIDTH  - EDGE_PAD
-        bottom = HEIGHT - EDGE_PAD
+        # Calculate centered play area
+        left = LEFT_HUD_WIDTH + GRID_INNER
+        right = WIDTH - RIGHT_HUD_WIDTH - GRID_INNER
+        top = TOP_HEIGHT + GRID_INNER
+        bottom = HEIGHT - BOTTOM_PAD
 
         play_w = max(300, right - left)
-        play_h = max(300, bottom - top)
+        play_h = max(250, bottom - top)
 
-        # Lưới 3x3 đặt bên trong play area, có khoảng cách trong
-        inner_left = left + GRID_INNER
-        inner_top  = top  + GRID_INNER
-        inner_w = max(100, play_w - 2 * GRID_INNER)
-        inner_h = max(100, play_h - 2 * GRID_INNER)
+        # Center the grid within the play area
+        center_x = (left + right) // 2
+        center_y = (top + bottom) // 2
+        
+        # Calculate grid spacing
+        grid_w = min(play_w - 40, 400)  # Maximum grid width
+        grid_h = min(play_h - 40, 300)  # Maximum grid height
+        
+        cell_w = grid_w // (cols - 1) if cols > 1 else grid_w
+        cell_h = grid_h // (rows - 1) if rows > 1 else grid_h
+        
+        # Starting position (top-left of grid)
+        start_x = center_x - grid_w // 2
+        start_y = center_y - grid_h // 2
 
-        cell_w = inner_w // (cols - 1)
-        cell_h = inner_h // (rows - 1)
-
-        # Bán kính lỗ tỉ lệ theo cell nhưng giới hạn hợp lý
+        # Hole radius based on available space
         base = min(cell_w, cell_h)
-        radius = max(30, min(40, int(base * 0.4)))
+        radius = max(35, min(45, int(base * 0.35)))
 
         points: List[SpawnPoint] = []
         for j in range(rows):
             for i in range(cols):
-                x = inner_left + i * cell_w
-                y = inner_top + j * cell_h
+                x = start_x + i * cell_w
+                y = start_y + j * cell_h
                 points.append(SpawnPoint((x, y), radius))
         return points  # 9 spawn points
 
@@ -950,25 +962,36 @@ class Game:
         Sets up background music and sound effects with appropriate volumes.
         """
         try:
-            pygame.mixer.init()
-        except Exception:
+            pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+        except Exception as e:
+            print(f"Audio system initialization failed: {e}")
             # Audio device not available; run silently.
             return
+            
         # Background music (looped) – optional
         if os.path.exists(MUSIC_PATH):
             try:
                 pygame.mixer.music.load(MUSIC_PATH)
                 pygame.mixer.music.set_volume(self.bgm_volume)
                 pygame.mixer.music.play(-1)
-            except Exception:
-                pass
+                print(f"Background music loaded and playing from: {MUSIC_PATH}")
+            except Exception as e:
+                print(f"Failed to load background music: {e}")
+        else:
+            print(f"Background music file not found: {MUSIC_PATH}")
+            
         # Hit SFX – optional
         if os.path.exists(HIT_SFX_PATH):
             try:
                 self.snd_hit = pygame.mixer.Sound(HIT_SFX_PATH)
                 self.snd_hit.set_volume(self.sfx_volume)
-            except Exception:
+                print(f"Hit sound effect loaded from: {HIT_SFX_PATH}")
+            except Exception as e:
+                print(f"Failed to load hit sound effect: {e}")
                 self.snd_hit = None
+        else:
+            print(f"Hit sound effect file not found: {HIT_SFX_PATH}")
+            self.snd_hit = None
 
     # --------------------------------- Loop -----------------------------------------
     
@@ -996,22 +1019,15 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     return False
-                elif event.type == pygame.KEYDOWN:
+                if event.type == pygame.KEYDOWN:
                     if event.key in (pygame.K_ESCAPE, pygame.K_q):
                         return False
-                    elif event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
+                    if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
                         return True
-                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    # Check start button click
-                    if self._check_start_button_click(mouse_pos):
-                        return True
-                    # Check volume slider clicks
-                    elif self._handle_volume_slider_click(mouse_pos):
-                        pass  # Volume adjusted, continue showing start screen
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self._check_start_button_click(mouse_pos):
+                    return True
             
-            # Draw start screen
             self._draw_start_screen(start_bg, mouse_pos)
-            
             clock.tick(FPS)
     
     def _check_start_button_click(self, mouse_pos: Tuple[int, int]) -> bool:
@@ -1026,10 +1042,7 @@ class Game:
         if bgm_rect.collidepoint(mouse_pos):
             relative_x = mouse_pos[0] - bgm_rect.x
             self.bgm_volume = max(0.0, min(1.0, relative_x / bgm_rect.width))
-            try:
-                pygame.mixer.music.set_volume(self.bgm_volume)
-            except:
-                pass
+            pygame.mixer.music.set_volume(self.bgm_volume)
             return True
         
         # SFX Volume slider
@@ -1052,11 +1065,6 @@ class Game:
         title_rect = title_text.get_rect(center=(WIDTH//2, HEIGHT//2 - 200))
         self.screen.blit(title_text, title_rect)
         
-        # Subtitle
-        subtitle_text = self.font_small.render("Assignment 1 - Game Programming", True, TEXT_COLOR)
-        subtitle_rect = subtitle_text.get_rect(center=(WIDTH//2, HEIGHT//2 - 160))
-        self.screen.blit(subtitle_text, subtitle_rect)
-        
         # Volume controls
         self._draw_volume_sliders()
         
@@ -1075,18 +1083,16 @@ class Game:
         # Instructions
         instructions = [
             "CONTROLS:",
-            "Left Click - Whack zombies",
+            "LMB - Whack zombies",
             "P - Pause/Resume",
-            "R - Reset game",
             "M - Toggle mute",
-            "F - Toggle FPS display",
             "ESC/Q - Quit"
         ]
         
         y_start = HEIGHT//2 + 120
         for i, instruction in enumerate(instructions):
             color = (255, 255, 100) if i == 0 else (180, 180, 180)
-            font = self.font_small if i == 0 else pygame.font.Font(FONT_NAME, 14)
+            font = self.font_small if i == 0 else pygame.font.Font(FONT_NAME, FONT_SIZE_SMALL)
             text = font.render(instruction, True, color)
             text_rect = text.get_rect(center=(WIDTH//2, y_start + i * 25))
             self.screen.blit(text, text_rect)
@@ -1114,7 +1120,7 @@ class Game:
         
         # BGM percentage
         bgm_percent = int(self.bgm_volume * 100)
-        percent_text = pygame.font.Font(FONT_NAME, 14).render(f"{bgm_percent}%", True, TEXT_COLOR)
+        percent_text = pygame.font.Font(FONT_NAME, FONT_SIZE_SMALL).render(f"{bgm_percent}%", True, TEXT_COLOR)
         percent_rect = percent_text.get_rect(center=(WIDTH//2 + 130, HEIGHT//2 - 70))
         self.screen.blit(percent_text, percent_rect)
         
@@ -1134,7 +1140,7 @@ class Game:
         
         # SFX percentage
         sfx_percent = int(self.sfx_volume * 100)
-        percent_text = pygame.font.Font(FONT_NAME, 14).render(f"{sfx_percent}%", True, TEXT_COLOR)
+        percent_text = pygame.font.Font(FONT_NAME, FONT_SIZE_SMALL).render(f"{sfx_percent}%", True, TEXT_COLOR)
         percent_rect = percent_text.get_rect(center=(WIDTH//2 + 130, HEIGHT//2 - 20))
         self.screen.blit(percent_text, percent_rect)
 
@@ -1168,7 +1174,7 @@ class Game:
                     if event.key in (pygame.K_ESCAPE, pygame.K_q):
                         running = False
                     elif event.key == pygame.K_r:
-                        self._reset_scores()
+                        self.reset_game()
                     elif event.key == pygame.K_m:
                         self._toggle_mute()
                     elif event.key == pygame.K_p:
@@ -1177,7 +1183,6 @@ class Game:
                         self.show_fps = not self.show_fps
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if self.game_over:
-                        # Check if clicked restart button or just restart
                         self.reset_game()
                     elif not self.paused:
                         self._handle_click(pygame.mouse.get_pos(), now)
@@ -1209,7 +1214,6 @@ class Game:
             if self.life_lost_flash > 0:
                 self.life_lost_flash = max(0, self.life_lost_flash - self.clock.get_time())
 
-            # Draw
             self._draw(now, avg_fps)
 
             # Cap frame rate
@@ -1232,6 +1236,8 @@ class Game:
         now_ms : int
             Current time in milliseconds
         """
+        if self.snd_hit and not self.muted:
+            self.snd_hit.play()
         # Make newest-first to favor topmost if overlap ever happens
         for z in reversed(self.zombies):
             if not z.hit and not z.attacking and z.contains_point(pos, now_ms):
@@ -1244,21 +1250,11 @@ class Game:
                 
                 # Update level based on kills
                 self.update_level()
-                
-                if self.snd_hit and not self.muted:
-                    self.snd_hit.play()
                 return
                 
         # No zombie consumed the click → miss
         self.misses += 1
         self.logger.log_click(pos, False, "No zombie hit")
-
-    def _reset_scores(self) -> None:
-        """
-        Reset score counters and restart game.
-        Cursor visibility is handled by reset_game method.
-        """
-        self.reset_game()
 
     def _toggle_pause(self) -> None:
         """
@@ -1274,10 +1270,7 @@ class Game:
         Affects both background music and sound effects.
         """
         self.muted = not self.muted
-        try:
-            pygame.mixer.music.set_volume(0.0 if self.muted else self.bgm_volume)
-        except Exception:
-            pass
+        pygame.mixer.music.set_volume(0.0 if self.muted else self.bgm_volume)
 
     # --------------------------------- Rendering ------------------------------------
 
@@ -1333,35 +1326,26 @@ class Game:
 
         # HUD
         self.hud.draw(self.screen, self.hits, self.misses, self.lives, 
-                      self.level, self.zombies_killed, self.show_fps, fps, self.paused)
+                      self.level, self.zombies_killed, self.show_fps, fps, self.paused, self.muted)
 
-        # Title / hints
+        # Title / hints - centered at top
         if not self.game_over:
             title = self.font_big.render("Whack-a-Zombie", True, TEXT_COLOR)
-            self.screen.blit(title, (WIDTH - title.get_width() - HUD_PADDING, HUD_PADDING))
+            title_rect = title.get_rect(center=(WIDTH//2, HUD_PADDING + title.get_height()//2))
+            self.screen.blit(title, title_rect)
+            
             hint_text = "[LMB] hit  |  [P] pause  |  [F] fps  |  [R] reset  |  [M] mute  |  [ESC/Q] quit"
             hint = self.font_small.render(hint_text, True, (200, 200, 200))
-            self.screen.blit(hint, (WIDTH - hint.get_width() - HUD_PADDING, HUD_PADDING + title.get_height() + 4))
+            hint_rect = hint.get_rect(center=(WIDTH//2, HUD_PADDING + title.get_height() + 8 + hint.get_height()//2))
+            self.screen.blit(hint, hint_rect)
 
         # Screen effects
         self._draw_life_loss_flash()
         
-        # Game over screen
         if self.game_over:
             self.game_over_screen.draw(self.screen, self.hits, self.misses)
-            # Still draw hammer cursor on game over screen
-            self._draw_hammer_cursor()
-        else:
-            # Draw hammer cursor during normal gameplay
-            self._draw_hammer_cursor()
+        self._draw_hammer_cursor()
 
         pygame.display.flip()
 
-
-def main() -> None:
-    """Entry point; constructs the Game and starts the main loop."""
-    Game().run()
-
-
-if __name__ == "__main__":
-    main()
+Game().run()
