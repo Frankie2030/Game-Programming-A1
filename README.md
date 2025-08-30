@@ -20,14 +20,16 @@ Whack-a-Zombie is an arcade-style game where players must click on zombie heads 
 ### Installation
 1. Clone or download the project files
 2. Navigate to the project directory
-3. Install dependencies:
+3. Add environment & Install dependencies:
 ```bash
-pip install -r requirements.txt
+python3 -m venv venv
+source venv/bin/activate
+python3 -m pip install -r requirements.txt
 ```
 
 ### Running the Game
 ```bash
-python main.py
+python3 main.py
 ```
 
 ## 🎯 Game Controls
