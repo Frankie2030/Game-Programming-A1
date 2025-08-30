@@ -161,29 +161,30 @@ class Game:
         # We need to find the actual pixel coordinates for the center of the first tombstone
         # and the spacing between them based on the visual layout in the stretched image.
 
-        # Visual estimation from the provided screenshot (960x540 window):
-        # Center of the top-left tombstone:
-        #   X-coordinate: Roughly 200-210 pixels from the left edge.
-        #   Y-coordinate: Roughly 150-160 pixels from the top edge.
-        # Horizontal spacing between tombstone centers: Roughly 140-150 pixels.
-        # Vertical spacing between tombstone centers: Roughly 90-100 pixels.
-
-        # Let's use these refined estimates:
-        FIRST_COL_CENTER_X = 210  # X-coordinate of the center of the first column's tombstones
-        COL_SPACING = 140         # Horizontal distance between centers of adjacent tombstones
-
-        FIRST_ROW_CENTER_Y = 155  # Y-coordinate of the center of the first row's tombstones
-        ROW_SPACING = 95          # Vertical distance between centers of adjacent tombstones
-
+        # Manual positioning of each spawn point based on actual visual tombstone positions
+        # This accounts for non-uniform spacing between tombstones
+        
         # Spawn point radius - adjusted to fit zombie base on tombstone
-        SPAWN_RADIUS = 30 # This might need further fine-tuning with zombie sprite size
+        SPAWN_RADIUS = 30
+
+        # Define exact positions for each spawn point (4x5 grid)
+        # Format: (x, y) coordinates for each position
+        spawn_positions = [
+            # Row 1 (top row) - adjusted right and down
+            (165, 75), (325, 75), (475, 75), (635, 75), (790, 75),
+            # Row 2 - adjusted right and down
+            (165, 190), (325, 190), (475, 190), (635, 190), (790, 190),
+            # Row 3 - adjusted right and down
+            (165, 305), (325, 305), (475, 305), (635, 305), (790, 305),
+            # Row 4 (bottom row) - adjusted right and down
+            (165, 415), (325, 415), (475, 415), (635, 415), (790, 415)
+        ]
+
+
 
         spawn_points = []
-        for j in range(rows):  # Iterate through rows
-            for i in range(cols):  # Iterate through columns
-                x = FIRST_COL_CENTER_X + i * COL_SPACING
-                y = FIRST_ROW_CENTER_Y + j * ROW_SPACING
-                spawn_points.append(SpawnPoint((x, y), radius=SPAWN_RADIUS))
+        for pos in spawn_positions:
+            spawn_points.append(SpawnPoint(pos, radius=SPAWN_RADIUS))
 
         # Debugging output to verify positions
         print(f"Calculated Spawn Points ({len(spawn_points)}):")
@@ -556,6 +557,15 @@ class Game:
         """Draw the game background image."""
         if self.background_img:
             surf.blit(self.background_img, (0, 0))
+
+            # Draw spawn points on top of background image to visualize positioning
+            # for sp in self.spawn_points:
+            #     x, y = sp.pos
+            #     r = sp.radius
+            #     # Draw a red circle to show spawn point location
+            #     pygame.draw.circle(surf, (255, 0, 0), (x, y), r, 2)
+            #     # Draw a small red dot in the center
+            #     pygame.draw.circle(surf, (255, 0, 0), (x, y), 3)
         else:
             # Fallback to solid color if background image not available
             surf.fill(BG_COLOR)
