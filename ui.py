@@ -33,7 +33,7 @@ class HUD:
         return None
 
     def draw(self, surf: pygame.Surface, hits: int, misses: int, lives: int, 
-             level: int, zombies_killed: int, show_fps: bool = False, fps: float = 0.0, 
+             level: int, show_fps: bool = False, fps: float = 0.0, 
              paused: bool = False, muted: bool = False) -> None:
         """Render a comprehensive HUD with left/right split layout."""
         total = hits + misses
@@ -47,7 +47,7 @@ class HUD:
         left_y += level_text.get_height() + 4
         
         if level < MAX_LEVEL:
-            zombies_in_level = zombies_killed % ZOMBIES_PER_LEVEL
+            zombies_in_level = hits % ZOMBIES_PER_LEVEL
             progress_text = f"Progress: {zombies_in_level}/{ZOMBIES_PER_LEVEL}"
             progress_surf = self.small_font.render(progress_text, True, TEXT_COLOR)
             surf.blit(progress_surf, (left_x, left_y))
@@ -77,7 +77,7 @@ class HUD:
             f"Hits: {hits}",
             f"Misses: {misses}",
             f"Accuracy: {acc:.1f}%",
-            f"Zombies Killed: {zombies_killed}"
+            # f"Zombies Killed: {zombies_killed}"
         ]
         
         for line in right_stats:
