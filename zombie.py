@@ -1,12 +1,5 @@
 from __future__ import annotations
 
-"""Zombie entity: lifecycle, animation, hit testing, and rendering.
-
-A zombie spawns, plays idle animation, times out to attack if not hit (costing
-the player a life), and then despawns with animation. Uses sprite sheets if
-available, but degrades gracefully.
-"""
-
 import math
 import os
 import pygame
@@ -23,12 +16,12 @@ class Zombie:
     Represents one zombie "head" that can be whacked.
 
     Lifecycle:
-    - SPAWNING: scales up from 0.6 → 1.0 over ~120ms for a "pop" effect.
+    - SPAWNING: scales up for a "pop" effect.
     - ACTIVE:   remains visible until lifetime expires or it's hit.
     - ATTACKING: plays attack animation when lifetime expires without being hit.
-    - DESPAWN:  scales down to 0 over ~160ms, then is removed.
+    - DESPAWN:  scales down and is removed.
 
-    Timings are driven via pygame.time.get_ticks() (ms-precise, frame-rate independent).
+    Timings are driven via pygame.time.get_ticks() (frame-rate independent).
     """
 
     SPAWN_ANIM_MS = 150
@@ -38,6 +31,9 @@ class Zombie:
     SPRITE_BASE_W = 80
     SPRITE_BASE_H = 70
     SPRITE_SCALE  = 1.35   # make the zombie bigger (~108x95)
+
+    ANCHOR_OFFSET_X = -18
+    ANCHOR_OFFSET_Y = -6
 
     # Class variables for sprite management
     sprite_sheet = None
@@ -244,16 +240,24 @@ class Zombie:
 
         pygame.draw.rect(surf, (200, 200, 200), (bar_x, bar_y, bar_width, bar_height), 1)
 
-    def draw(self, surf: pygame.Surface, now_ms: int) -> None:
+    ## DEBUG FUNCTION
+    def draw_center_dot(self, surf: pygame.Surface, now_ms: int) -> None:
         """
-        Render using sprites with vertical offset for rise/fall animations.
-        Adds a small downward anchor so the sprite visually centers in the hole.
+        Draw a red dot at the center of the zombie sprite.
         """
         center = self.spawn.pos
         vertical_offset = self.get_vertical_offset(now_ms)
+        dot_radius = 3
+        pygame.draw.circle(surf, (255, 0, 0), (center[0], center[1] + vertical_offset), dot_radius)
 
-        # Timer bar behind zombie
+    def draw(self, surf: pygame.Surface, now_ms: int) -> None:
+        """
+        Render using sprites with vertical offset for rise/fall animations.
+        """
+        center = self.spawn.pos
+        vertical_offset = self.get_vertical_offset(now_ms)
         self.draw_timer_bar(surf, now_ms)
+        # self.draw_center_dot(surf, now_ms)
 
         sprite = self.get_current_sprite(now_ms)
         if sprite and self.sprites_loaded:
@@ -267,35 +271,43 @@ class Zombie:
                 display_sprite = flash_sprite
 
             sprite_rect = display_sprite.get_rect()
-            sprite_rect.centerx = center[0]
-            sprite_rect.centery = center[1] + vertical_offset
+            sprite_rect.centerx = center[0] + self.ANCHOR_OFFSET_X
+            sprite_rect.centery = center[1] + vertical_offset + self.ANCHOR_OFFSET_Y
             surf.blit(display_sprite, sprite_rect)
             return
 
-        print("No sprite available for drawing")
+    def get_hitbox_rect(self, now_ms: int) -> pygame.Rect:
+        """
+        Calculate the zombie's hitbox rectangle based on current position and sprite size.
+        Uses the exact same positioning logic as sprite drawing for consistency.
+        """
+        center = self.spawn.pos
+        vertical_offset = self.get_vertical_offset(now_ms)
+        sprite_width, sprite_height = self._scaled_size()
+        hitbox_rect = pygame.Rect(0, 0, int(sprite_width * 0.5), int(sprite_height * 0.9))
+        hitbox_rect.centerx = center[0]
+        hitbox_rect.centery = center[1] + vertical_offset
+        return hitbox_rect
 
     def contains_point(self, point: tuple[int, int], now_ms: int) -> bool:
         """
         Rectangle-based hit test for zombie sprites. Only allow hits when zombie is not attacking.
-        Uses the same scaled size and anchor as drawing so clicks feel correct.
         """
         if self.attacking:
             return False
-
-        cx, cy = self.spawn.pos
-        vertical_offset = self.get_vertical_offset(now_ms)
-
-        if self.sprites_loaded and self.normal_frames:
-            sprite_width, sprite_height = self.normal_frames[0].get_size()
+        hitbox_rect = self.get_hitbox_rect(now_ms)
+        return hitbox_rect.collidepoint(point)
+    
+    def draw_hitbox(self, surf: pygame.Surface, now_ms: int) -> None:
+        """
+        Draw the zombie's hitbox as a colored rectangle outline for debugging.
+        """
+        hitbox_rect = self.get_hitbox_rect(now_ms)
+        if self.attacking:
+            color = (255, 0, 0)      # Red when attacking (not hittable)
+        elif self.hit:
+            color = (128, 128, 128)  # Gray when hit
         else:
-            sprite_width, sprite_height = self._scaled_size()
-
-        adjusted_cy = cy + vertical_offset
-
-        rect_left   = cx - sprite_width // 2
-        rect_top    = adjusted_cy - sprite_height // 2
-        rect_right  = rect_left + sprite_width
-        rect_bottom = rect_top + sprite_height
-
-        px, py = point
-        return (rect_left <= px <= rect_right) and (rect_top <= py <= rect_bottom)
+            color = (0, 255, 0)      # Green when hittable
+        # Draw hitbox outline
+        pygame.draw.rect(surf, color, hitbox_rect, 2)

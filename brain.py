@@ -115,6 +115,15 @@ class Brain:
                 return int(255 * (1.0 - progress))
         
         return 255  # Fully visible
+
+    ## DEBUG FUNCTION
+    def draw_center_dot(self, surf: pygame.Surface, now_ms: int) -> None:
+        """
+        Draw a red dot at the center of the brain sprite.
+        """
+        center = self.spawn.pos
+        dot_radius = 3
+        pygame.draw.circle(surf, (255, 0, 0), (center[0], center[1]), dot_radius)
     
     def draw(self, surf: pygame.Surface, now_ms: int) -> None:
         """Render the brain pickup."""
@@ -125,10 +134,7 @@ class Brain:
             return
             
         if self.sprites_loaded and self.sprite_image:
-            # Use brain sprite
             display_sprite = self.sprite_image.copy()
-            
-            # Apply alpha
             if alpha < 255:
                 display_sprite.set_alpha(alpha)
             
@@ -141,13 +147,35 @@ class Brain:
             
             sprite_rect = display_sprite.get_rect(center=center)
             surf.blit(display_sprite, sprite_rect)
+
+        # self.draw_center_dot(surf, now_ms)
+
+    def get_hitbox_rect(self) -> pygame.Rect:
+        """
+        Calculate the brain's hitbox rectangle.
+        """
+        sprite_width, sprite_height = self.sprite_image.get_size()
+        hitbox_rect = pygame.Rect(0, 0, sprite_width, sprite_height)
+        hitbox_rect.center = self.spawn.pos
+        return hitbox_rect
     
     def contains_point(self, point: tuple[int, int]) -> bool:
         """Check if a point is within the brain's clickable area."""
         if self.picked_up or self.dead:
             return False
-        if self.sprites_loaded and self.sprite_image:
-            # Use sprite bounds
-            sprite_rect = self.sprite_image.get_rect(center=self.spawn.pos)
-            return sprite_rect.collidepoint(point)
-        return False
+        hitbox_rect = self.get_hitbox_rect()
+        return hitbox_rect.collidepoint(point)
+    
+    def draw_hitbox(self, surf: pygame.Surface, now_ms: int) -> None:
+        """
+        Draw the brain's hitbox as a colored rectangle outline for debugging.
+        """
+        hitbox_rect = self.get_hitbox_rect(now_ms)
+        if self.picked_up:
+            color = (255, 255, 0)    # Yellow when picked up (not hittable)
+        elif self.dead:
+            color = (128, 128, 128)  # Gray when dead
+        else:
+            color = (0, 255, 0)      # Green when hittable
+        # Draw hitbox outline
+        pygame.draw.rect(surf, color, hitbox_rect, 2)

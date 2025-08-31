@@ -60,8 +60,13 @@ class Game:
         self.game_over = False
         self.paused = False
         self.show_fps = False
+        self.show_hitboxes = False  # Toggle for displaying zombie hitboxes
         self.fps_samples = []
         self.life_lost_flash = 0  # Timer for life lost screen flash
+        
+        # Pause-aware timing
+        self.total_pause_time = 0  # Cumulative time spent paused (in ms)
+        self.pause_start_time = None  # When current pause started (None if not paused)
         
         # Audio volumes
         self.bgm_volume = 0.5
@@ -90,7 +95,7 @@ class Game:
         self.misses = 0
         self.lives = INITIAL_LIVES
         self.level = 1
-        self.zombies_killed = 0
+        # self.zombies_killed = 0
         self.game_over = False
         self.spawner.next_spawn_at = 0  # Reset spawner timing
         self.spawner.next_brain_check_at = 0  # Reset brain spawning timing
@@ -98,8 +103,8 @@ class Game:
         pygame.mouse.set_visible(False)  # Hide system cursor for hammer display
 
     def update_level(self) -> None:
-        """Update game level based on zombies killed."""
-        new_level = min(MAX_LEVEL, (self.zombies_killed // ZOMBIES_PER_LEVEL) + 1)
+        """Update game level based on zombies killed (hits, as a zombie only requires 1 hit to die)."""
+        new_level = min(MAX_LEVEL, (self.hits // ZOMBIES_PER_LEVEL) + 1)
         if new_level > self.level:
             old_level = self.level
             self.level = new_level
@@ -170,7 +175,7 @@ class Game:
         # Define exact positions for each spawn point (4x5 grid)
         # Format: (x, y) coordinates for each position
 
-        start_x, start_y = 155, 75
+        start_x, start_y = 160, 75
         x_gap, y_gap = 155, 115
         spawn_positions = [
             (start_x + col * x_gap, start_y + row * y_gap)
@@ -181,11 +186,6 @@ class Game:
         spawn_points = []
         for pos in spawn_positions:
             spawn_points.append(SpawnPoint(pos, radius=SPAWN_RADIUS))
-
-        # Debugging output to verify positions
-        print(f"Calculated Spawn Points ({len(spawn_points)}):")
-        for idx, sp in enumerate(spawn_points):
-            print(f"  {idx}: Pos={sp.pos}, Radius={sp.radius}")
 
         return spawn_points  # 20 spawn points (4x5 grid)
 
@@ -422,6 +422,9 @@ class Game:
                         self.toggle_pause()
                     elif event.key == pygame.K_f:
                         self.show_fps = not self.show_fps
+                    elif event.key == pygame.K_b:
+                        self.show_hitboxes = not self.show_hitboxes
+                        print(f"Hitboxes {'ON' if self.show_hitboxes else 'OFF'}")
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if self.game_over:
                         self.reset_game()
@@ -505,7 +508,7 @@ class Game:
             if not z.hit and not z.attacking and z.contains_point(pos, now_ms):
                 z.mark_hit(now_ms)
                 self.hits += 1
-                self.zombies_killed += 1
+                # self.zombies_killed += 1
                 if self.snd_hit and not self.muted:
                     try:
                         self.snd_hit.play()
@@ -519,7 +522,7 @@ class Game:
                 self.update_level()
                 return
                 
-        # No entity consumed the click → miss
+        # No entity consumed the click
         self.misses += 1
         self.logger.log_click(pos, False, "No target hit")
 
@@ -550,27 +553,15 @@ class Game:
             self.screen.blit(flash_surface, (0, 0))
 
     def draw_background(self, surf: pygame.Surface) -> None:
-        """Draw the game background image."""
+        """Draw the game background image, fallback if asset not avialable"""
         if self.background_img:
             surf.blit(self.background_img, (0, 0))
-
-            # Draw spawn points on top of background image to visualize positioning
-            # for sp in self.spawn_points:
-            #     x, y = sp.pos
-            #     r = sp.radius
-            #     # Draw a red circle to show spawn point location
-            #     pygame.draw.circle(surf, (255, 0, 0), (x, y), r, 2)
-            #     # Draw a small red dot in the center
-            #     pygame.draw.circle(surf, (255, 0, 0), (x, y), 3)
         else:
-            # Fallback to solid color if background image not available
             surf.fill(BG_COLOR)
-            
-            # Subtle vignette / gradient rectangles for polish (no perf cost)
             rect = pygame.Rect(0, 0, WIDTH, HEIGHT)
             pygame.draw.rect(surf, (20, 22, 27), rect, width=24, border_radius=18)
 
-            # Draw holes as fallback
+            # Draw holes
             for sp in self.spawn_points:
                 x, y = sp.pos
                 r = sp.radius
@@ -595,14 +586,20 @@ class Game:
         # Draw active zombies
         for z in self.zombies:
             z.draw(self.screen, now_ms)
+            # Draw hitboxes if debug mode is enabled
+            if self.show_hitboxes:
+                z.draw_hitbox(self.screen, now_ms)
             
         # Draw active brains
         for brain in self.brains:
             brain.draw(self.screen, now_ms)
+            # Draw hitboxes if debug mode is enabled
+            if self.show_hitboxes:
+                brain.draw_hitbox(self.screen, now_ms)
 
         # HUD
         self.hud.draw(self.screen, self.hits, self.misses, self.lives, 
-                      self.level, self.zombies_killed, self.show_fps, fps, self.paused, self.muted)
+                      self.level, self.show_fps, fps, self.paused, self.muted)
 
         # Title / hints - centered at top
         if not self.game_over:
@@ -610,7 +607,7 @@ class Game:
             title_rect = title.get_rect(center=(WIDTH//2, HUD_PADDING + title.get_height()//2))
             self.screen.blit(title, title_rect)
             
-            hint_text = "[LMB] hit  |  [P] pause  |  [F] fps  |  [R] reset  |  [M] mute  |  [ESC] quit"
+            hint_text = "[LMB] hit  |  [P] pause  |  [F] fps  |  [B] hitboxes  |  [R] reset  |  [M] mute  |  [ESC] quit"
             hint = self.font_small.render(hint_text, True, (200, 200, 200))
             hint_rect = hint.get_rect(center=(WIDTH//2, HUD_PADDING + title.get_height() + 8 + hint.get_height()//2))
             self.screen.blit(hint, hint_rect)
