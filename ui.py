@@ -104,7 +104,7 @@ class HUD:
             f"Hits: {hits}",
             f"Misses: {misses}",
             f"Accuracy: {acc:.1f}%",
-            f"Zombies Killed: {zombies_killed}"
+            # f"Zombies Killed: {zombies_killed}"
         ]
         
         # Find the widest stat line to calculate proper positioning
