@@ -32,6 +32,10 @@ class Spawner:
         self.next_spawn_at = 0  # ms timestamp for next spawn
         self.next_brain_check_at = 0  # ms timestamp for next brain spawn check
 
+    def update_spawn_points(self, new_spawn_points: list[SpawnPoint]) -> None:
+        """Update spawn points when window is resized."""
+        self.spawn_points = new_spawn_points
+
     def get_spawn_interval(self, level: int) -> int:
         """
         Calculate spawn interval (milliseconds) based on level.
@@ -99,7 +103,9 @@ class Spawner:
                 # Robustness: ensure lifetime never drops below configured minimum
                 from constants import MIN_ZOMBIE_LIFETIME  # local import to avoid cycles
                 lifetime = max(MIN_ZOMBIE_LIFETIME, lifetime)
-                zombies.append(Zombie(spawn, born_at_ms=now_ms, lifetime_ms=lifetime))
+                new_zombie = Zombie(spawn, born_at_ms=now_ms, lifetime_ms=lifetime)
+                new_zombie.create_spawn_particles()  # Create spawn effects
+                zombies.append(new_zombie)
             
             # Always schedule next spawn, even if we couldn't spawn this time
             self.schedule_next(now_ms, level)

@@ -10,6 +10,7 @@ available, but degrades gracefully.
 import math
 import os
 import pygame
+import random
 
 from constants import (
     ATTACK_ANIM_MS, 
@@ -29,6 +30,12 @@ class Zombie:
     - DESPAWN:  scales down to 0 over ~160ms, then is removed.
 
     Timings are driven via pygame.time.get_ticks() (ms-precise, frame-rate independent).
+    
+    Visual Effects:
+    - Spawn effects: dust particles and yellow glow when appearing
+    - Hit effects: colorful impact particles when hit
+    - Death animation: sprite-based death sequence
+    - Health bar: color-coded timer showing remaining lifetime
     """
 
     SPAWN_ANIM_MS = 150
@@ -47,10 +54,12 @@ class Zombie:
     sprites_loaded = False
 
     @classmethod
-    def _scaled_size(cls) -> tuple[int, int]:
+    def _scaled_size(cls, scale_factor: float = 1.0) -> tuple[int, int]:
         """Return (w, h) used everywhere for this zombie's scaled sprite."""
-        return (int(cls.SPRITE_BASE_W * cls.SPRITE_SCALE),
-                int(cls.SPRITE_BASE_H * cls.SPRITE_SCALE))
+        # Apply additional scale factor for responsive sizing
+        responsive_scale = cls.SPRITE_SCALE * scale_factor
+        return (int(cls.SPRITE_BASE_W * responsive_scale),
+                int(cls.SPRITE_BASE_H * responsive_scale))
 
     @classmethod
     def load_sprites(cls):
@@ -116,9 +125,21 @@ class Zombie:
         self.attack_start: int | None = None
         self.has_dealt_damage = False
         self.animation_frame = 0
+        
+        # Spawn effects
+        self.spawn_particles = []
+        self.spawn_dust_alpha = 255
+        self.spawn_glow_alpha = 255
+        
+        # Hit effects
+        self.hit_particles = []
+        self.hit_flash_timer = 0
 
         if not Zombie.sprites_loaded:
             Zombie.load_sprites()
+        
+        # Store scale factor for responsive sizing
+        self.scale_factor = 1.0
 
     # ------------------------------- Update & State ----------------------------------
 
@@ -131,6 +152,9 @@ class Zombie:
         self.hit = True
         self.hit_time = now_ms
         self.despawn_start = now_ms
+        
+        # Create hit effects at the hit position
+        self.create_hit_effects(self.spawn.pos)
 
     def start_attack(self, now_ms: int) -> None:
         if self.hit or self.dead or self.attacking:
@@ -164,6 +188,139 @@ class Zombie:
 
         return attack_occurred
 
+    def update_scale_factor(self, new_scale_factor: float) -> None:
+        """Update the zombie's scale factor for responsive sizing."""
+        self.scale_factor = new_scale_factor
+
+    def create_hit_effects(self, hit_pos: tuple[int, int]) -> None:
+        """Create particle effects when zombie is hit."""
+        
+        # Create impact particles
+        for _ in range(12):
+            angle = random.uniform(0, 2 * math.pi)
+            speed = random.uniform(1, 3)  # Reduced speed for better visibility
+            dx = math.cos(angle) * speed
+            dy = math.sin(angle) * speed
+            
+            particle = {
+                'x': hit_pos[0],
+                'y': hit_pos[1],
+                'dx': dx,
+                'dy': dy,
+                'life': random.randint(80, 120),  # Increased lifetime
+                'max_life': 120,  # Increased max lifetime
+                'alpha': 255,
+                'size': random.randint(4, 7),  # Slightly larger particles
+                'color': random.choice([(255, 100, 100), (255, 200, 100), (255, 255, 100)])  # Red, orange, yellow
+            }
+            self.hit_particles.append(particle)
+        
+        # Set hit flash timer
+        self.hit_flash_timer = 150
+
+    def update_hit_effects(self, now_ms: int) -> None:
+        """Update hit particle effects."""
+        # Update hit flash timer
+        if self.hit_flash_timer > 0:
+            self.hit_flash_timer -= 16  # 16ms per frame at 60fps
+        
+        # Update hit particles
+        for particle in self.hit_particles[:]:
+            particle['life'] -= 16
+            if particle['life'] <= 0:
+                self.hit_particles.remove(particle)
+            else:
+                # Move particles outward
+                particle['x'] += particle['dx']
+                particle['y'] += particle['dy']
+                particle['alpha'] = int(255 * (particle['life'] / particle['max_life']))
+                # Add gravity effect
+                particle['dy'] += 0.2
+
+    def draw_spawn_effects(self, surf: pygame.Surface) -> None:
+        """Draw spawn particle effects and glow."""
+        # Draw dust particles
+        for particle in self.spawn_particles:
+            if particle['alpha'] > 0:
+                # Create particle surface with alpha
+                particle_surf = pygame.Surface((particle['size'], particle['size']), pygame.SRCALPHA)
+                particle_color = (139, 69, 19, particle['alpha'])  # Brown dust color
+                pygame.draw.circle(particle_surf, particle_color, (particle['size']//2, particle['size']//2), particle['size']//2)
+                surf.blit(particle_surf, (particle['x'] - particle['size']//2, particle['y'] - particle['size']//2))
+        
+        # Draw spawn glow effect
+        if self.spawn_glow_alpha > 0:
+            center_x, center_y = self.spawn.pos
+            glow_radius = int(self.spawn.radius * 1.5)
+            
+            # Create glow surface
+            glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+            glow_color = (255, 255, 0, self.spawn_glow_alpha // 3)  # Yellow glow
+            
+            # Draw multiple circles for glow effect
+            for i in range(3):
+                alpha = self.spawn_glow_alpha // (3 * (i + 1))
+                radius = glow_radius - i * 5
+                if radius > 0:
+                    glow_color = (255, 255, 0, alpha)
+                    pygame.draw.circle(glow_surf, glow_color, (glow_radius, glow_radius), radius)
+            
+            surf.blit(glow_surf, (center_x - glow_radius, center_y - glow_radius))
+
+    def draw_hit_effects(self, surf: pygame.Surface) -> None:
+        """Draw hit particle effects."""
+        # Draw hit particles
+        for particle in self.hit_particles:
+            if particle['alpha'] > 0:
+                # Create particle surface with alpha
+                particle_surf = pygame.Surface((particle['size'], particle['size']), pygame.SRCALPHA)
+                particle_color = (*particle['color'], particle['alpha'])
+                pygame.draw.circle(particle_surf, particle_color, (particle['size']//2, particle['size']//2), particle['size']//2)
+                surf.blit(particle_surf, (particle['x'] - particle['size']//2, particle['y'] - particle['size']//2))
+
+    def update_spawn_effects(self, now_ms: int) -> None:
+        """Update spawn particle effects and glow."""
+        # Update dust alpha (fade out over spawn animation)
+        if now_ms - self.born_at < self.SPAWN_ANIM_MS:
+            progress = (now_ms - self.born_at) / self.SPAWN_ANIM_MS
+            self.spawn_dust_alpha = int(255 * (1 - progress))
+            self.spawn_glow_alpha = int(255 * (1 - progress))
+        
+        # Update particles
+        for particle in self.spawn_particles[:]:
+            particle['life'] -= 16  # 16ms per frame at 60fps
+            if particle['life'] <= 0:
+                self.spawn_particles.remove(particle)
+            else:
+                # Move particles outward
+                particle['x'] += particle['dx']
+                particle['y'] += particle['dy']
+                particle['alpha'] = int(255 * (particle['life'] / particle['max_life']))
+
+    def create_spawn_particles(self) -> None:
+        """Create particle effects for zombie spawning."""
+        
+        center_x, center_y = self.spawn.pos
+        
+        # Create dust particles
+        for _ in range(8):
+            angle = random.uniform(0, 2 * math.pi)
+            speed = random.uniform(0.5, 1.5)  # Reduced speed for better visibility
+            dx = math.cos(angle) * speed
+            dy = math.sin(angle) * speed
+            
+            particle = {
+                'x': center_x,
+                'y': center_y,
+                'dx': dx,
+                'dy': dy,
+                'life': random.randint(60, 90),  # Increased lifetime
+                'max_life': 90,  # Increased max lifetime
+                'alpha': 255,
+                'size': random.randint(3, 5)  # Slightly larger particles
+            }
+            self.spawn_particles.append(particle)
+
     # ------------------------------- Rendering ---------------------------------------
 
     def get_vertical_offset(self, now_ms: int) -> int:
@@ -171,7 +328,7 @@ class Zombie:
         Positive values = zombie is below ground, 0 = fully emerged.
         Uses scaled sprite height so rise/sink matches visual size.
         """
-        _, sprite_height = self._scaled_size()
+        _, sprite_height = self._scaled_size(self.scale_factor)
 
         # Spawn animation: rise up
         t_spawn = now_ms - self.born_at
@@ -252,6 +409,12 @@ class Zombie:
         center = self.spawn.pos
         vertical_offset = self.get_vertical_offset(now_ms)
 
+        # Draw spawn effects first (behind zombie)
+        self.draw_spawn_effects(surf)
+        
+        # Draw hit effects (behind zombie)
+        self.draw_hit_effects(surf)
+        
         # Timer bar behind zombie
         self.draw_timer_bar(surf, now_ms)
 
@@ -288,7 +451,7 @@ class Zombie:
         if self.sprites_loaded and self.normal_frames:
             sprite_width, sprite_height = self.normal_frames[0].get_size()
         else:
-            sprite_width, sprite_height = self._scaled_size()
+            sprite_width, sprite_height = self._scaled_size(self.scale_factor)
 
         adjusted_cy = cy + vertical_offset
 
