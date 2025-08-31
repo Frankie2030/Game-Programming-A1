@@ -24,15 +24,15 @@ FONT_SIZE_LARGE = 22
 FONT_SIZE_TITLE = 24
 
 # Game Settings
-INITIAL_LIVES = 3                  # Starting lives
-MAX_LIVES = 5                      # Maximum lives possible
+INITIAL_LIVES = 3                 
+MAX_LIVES = 10                      
 ATTACK_ANIM_MS = 300               # Zombie attack animation duration
-LIFE_LOSS_FLASH_MS = 500           # Screen flash when losing life
+LIFE_LOSS_FLASH_MS = 300           # Screen flash when losing life
 
 # Brain pickup system
 BRAIN_SPAWN_CHECK_INTERVAL_MS = 4000
 BRAIN_SPAWN_PROBABILITY = 0.25     
-BRAIN_LIFETIME_MS = 1000           # How long brain stays on screen
+BRAIN_LIFETIME_MS = 1000
 
 MAX_LIFETIME_MS = 2000
 MIN_LIFETIME_MS = 800
