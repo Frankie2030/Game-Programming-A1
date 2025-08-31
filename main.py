@@ -206,16 +206,13 @@ class Game:
         # Spawn point radius - adjusted to fit zombie base on tombstone
         SPAWN_RADIUS = int(30 * min(scale_x, scale_y))  # Scale radius proportionally
 
-        # Base positions for reference window size (960x540)
+        # Base positions for reference window size (960x540)       
+        start_x, start_y = 155, 75
+        x_gap, y_gap = 155, 115
         base_positions = [
-            # Row 1 (top row)
-            (165, 75), (325, 75), (475, 75), (635, 75), (790, 75),
-            # Row 2
-            (165, 190), (325, 190), (475, 190), (635, 190), (790, 190),
-            # Row 3
-            (165, 305), (325, 305), (475, 305), (635, 305), (790, 305),
-            # Row 4 (bottom row)
-            (165, 415), (325, 415), (475, 415), (635, 415), (790, 415)
+            (start_x + col * x_gap, start_y + row * y_gap)
+            for row in range(rows)
+            for col in range(cols)
         ]
 
         # Scale positions to current window size
