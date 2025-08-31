@@ -32,6 +32,12 @@ python3 -m pip install -r requirements.txt
 python3 main.py
 ```
 
+### Build the executable file .exe
+```bash
+python3 -m pip install pyinstaller
+pyinstaller --onefile --windowed --name "WhackZombie" --add-data "assets:assets" main.py 
+```
+
 ## 🎯 Game Controls
 
 | Key | Action |
