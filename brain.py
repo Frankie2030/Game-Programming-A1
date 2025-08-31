@@ -103,7 +103,7 @@ class Brain:
 
     def get_scaled_sprite(self) -> pygame.Surface | None:
         """Get brain sprite scaled according to current scale factor."""
-        if not self.sprites_loaded or not hasattr(Brain, 'original_sprite'):
+        if not Brain.sprites_loaded or not hasattr(Brain, 'original_sprite'):
             return None
         
         # Calculate new size with responsive scaling
@@ -149,7 +149,7 @@ class Brain:
         if alpha <= 0:
             return
             
-        if self.sprites_loaded and self.sprite_image:
+        if Brain.sprites_loaded and hasattr(Brain, 'original_sprite'):
             display_sprite = self.get_scaled_sprite()
             if alpha < 255:
                 display_sprite.set_alpha(alpha)
@@ -170,7 +170,7 @@ class Brain:
         """
         Calculate the brain's hitbox rectangle.
         """
-        sprite_width, sprite_height = self.sprite_image.get_size()
+        sprite_width, sprite_height = self.get_scaled_sprite().get_size()
         hitbox_rect = pygame.Rect(0, 0, sprite_width, sprite_height)
         hitbox_rect.center = self.spawn.pos
         return hitbox_rect
@@ -186,7 +186,7 @@ class Brain:
         """
         Draw the brain's hitbox as a colored rectangle outline for debugging.
         """
-        hitbox_rect = self.get_hitbox_rect(now_ms)
+        hitbox_rect = self.get_hitbox_rect()
         if self.picked_up:
             color = (255, 255, 0)    # Yellow when picked up (not hittable)
         elif self.dead:

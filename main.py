@@ -131,6 +131,26 @@ class Game:
         # Set cursor for gameplay
         pygame.mouse.set_visible(False)  # Hide system cursor for hammer display
 
+    def get_game_time(self) -> int:
+        """
+        Get the current game time in milliseconds, excluding time spent paused.
+        This is the time that should be used for all game logic and entity updates.
+        
+        Returns
+        -------
+        int
+            Current game time in milliseconds (wall time minus total pause time)
+        """
+        wall_time = pygame.time.get_ticks()
+        
+        # If currently paused, don't count the current pause session yet
+        # (it will be added to total_pause_time when unpaused)
+        if self.paused and self.pause_start_time is not None:
+            current_pause_duration = wall_time - self.pause_start_time
+            return wall_time - self.total_pause_time - current_pause_duration
+        else:
+            return wall_time - self.total_pause_time
+
     def update_level(self) -> None:
         """Update game level based on zombies killed (hits, as a zombie only requires 1 hit to die)."""
         new_level = min(MAX_LEVEL, (self.hits // ZOMBIES_PER_LEVEL) + 1)
@@ -544,16 +564,21 @@ class Game:
                     if self.game_over:
                         self.reset_game()
                     elif not self.paused:
-                        self.handle_click(pygame.mouse.get_pos(), now)
+                        # Use pause-aware game time for click handling
+                        game_time = self.get_game_time()
+                        self.handle_click(pygame.mouse.get_pos(), game_time)
 
             # Update game state (only if not paused and not game over)
             if not self.paused and not self.game_over:
+                # Get pause-aware game time for all entity updates
+                game_time = self.get_game_time()
+                
                 # Update zombies and check for attacks
                 attacks_this_frame = 0
                 for z in self.zombies:
-                    z.update_spawn_effects(now)  # Update spawn effects
-                    z.update_hit_effects(now)    # Update hit effects
-                    if z.update(now):  # Returns True if zombie attacked (only once per zombie)
+                    z.update_spawn_effects(game_time)  # Update spawn effects
+                    z.update_hit_effects(game_time)    # Update hit effects
+                    if z.update(game_time):  # Returns True if zombie attacked (only once per zombie)
                         attacks_this_frame += 1
                 
                 # Handle life loss from zombie attacks
@@ -566,15 +591,15 @@ class Game:
                 
                 # Update brains
                 for brain in self.brains:
-                    brain.update(now)
+                    brain.update(game_time)
                 
                 # Remove dead zombies and brains
-                self.zombies = [z for z in self.zombies if z.is_active(now)]
-                self.brains = [b for b in self.brains if b.is_active(now)]
+                self.zombies = [z for z in self.zombies if z.is_active(game_time)]
+                self.brains = [b for b in self.brains if b.is_active(game_time)]
 
                 # Spawning
-                self.spawner.maybe_spawn(now, self.zombies, self.level, self.brains)
-                self.spawner.maybe_spawn_brain(now, self.zombies, self.brains)
+                self.spawner.maybe_spawn(game_time, self.zombies, self.level, self.brains)
+                self.spawner.maybe_spawn_brain(game_time, self.zombies, self.brains)
             
             # Update hammer hit effects
             self.update_hammer_hit_effects()
@@ -583,7 +608,9 @@ class Game:
             if self.life_lost_flash > 0:
                 self.life_lost_flash = max(0, self.life_lost_flash - self.clock.get_time())
 
-            self.draw(now, avg_fps)
+            # Use pause-aware game time for all drawing (animations, timer bars, etc.)
+            game_time = self.get_game_time()
+            self.draw(game_time, avg_fps)
 
             # Cap frame rate
             self.clock.tick(FPS)
@@ -654,7 +681,17 @@ class Game:
 
     def toggle_pause(self) -> None:
         if not self.game_over:
-            self.paused = not self.paused
+            if self.paused:
+                # Unpausing: add elapsed pause time to total
+                if self.pause_start_time is not None:
+                    current_pause_duration = pygame.time.get_ticks() - self.pause_start_time
+                    self.total_pause_time += current_pause_duration
+                    self.pause_start_time = None
+                self.paused = False
+            else:
+                # Pausing: record when pause started
+                self.pause_start_time = pygame.time.get_ticks()
+                self.paused = True
 
     def toggle_mute(self) -> None:
         self.muted = not self.muted
