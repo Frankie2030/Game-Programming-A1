@@ -11,8 +11,6 @@ BG_COLOR = (25, 28, 33)            # dark background
 TEXT_COLOR = (235, 235, 235)       # light text
 HOLE_COLOR = (60, 65, 75)          # spawn point "hole"
 HOLE_RING = (30, 33, 40)           # subtle ring for holes
-ZOMBIE_GREEN = (82, 180, 95)       # zombie head base color
-ZOMBIE_DARK = (42, 100, 50)        # shading
 FLASH_COLOR = (255, 235, 90)       # hit flash accent
 HUD_PADDING = 12
 FONT_NAME = "freesansbold.ttf"
@@ -21,7 +19,6 @@ FONT_NAME = "freesansbold.ttf"
 FONT_SIZE_SMALL = 14
 FONT_SIZE_MEDIUM = 16
 FONT_SIZE_LARGE = 22
-FONT_SIZE_TITLE = 24
 
 # Game Settings
 INITIAL_LIVES = 3                 

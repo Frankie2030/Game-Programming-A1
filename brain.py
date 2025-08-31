@@ -48,13 +48,10 @@ class Brain:
                 
                 print(f"Original brain sprite size: {original_w}x{original_h}")
                 
-                # Scale the brain sprite
-                new_w = int(original_w * cls.SPRITE_SCALE)
-                new_h = int(original_h * cls.SPRITE_SCALE)
-                cls.sprite_image = pygame.transform.scale(original, (new_w, new_h))
-                
+                # Store original for responsive scaling
+                cls.original_sprite = original
                 cls.sprites_loaded = True
-                print(f"Successfully loaded brain sprite: {new_w}x{new_h}")
+                print(f"Successfully loaded brain sprite: {original_w}x{original_h}")
             except Exception as e:
                 print(f"Failed to load brain sprite: {e}")
                 cls.sprites_loaded = False
@@ -69,6 +66,9 @@ class Brain:
         self.picked_up = False
         self.pickup_time: int | None = None
         self.despawn_start: int | None = None
+        
+        # Store scale factor for responsive sizing
+        self.scale_factor = 1.0
         
         if not Brain.sprites_loaded:
             Brain.load_sprite()
@@ -96,6 +96,22 @@ class Brain:
         # Remove brain after despawn animation
         if self.despawn_start is not None and now_ms - self.despawn_start >= self.DESPAWN_ANIM_MS:
             self.dead = True
+
+    def update_scale_factor(self, new_scale_factor: float) -> None:
+        """Update the brain's scale factor for responsive sizing."""
+        self.scale_factor = new_scale_factor
+
+    def get_scaled_sprite(self) -> pygame.Surface | None:
+        """Get brain sprite scaled according to current scale factor."""
+        if not self.sprites_loaded or not hasattr(Brain, 'original_sprite'):
+            return None
+        
+        # Calculate new size with responsive scaling
+        original_w, original_h = Brain.original_sprite.get_size()
+        new_w = int(original_w * Brain.SPRITE_SCALE * self.scale_factor)
+        new_h = int(original_h * Brain.SPRITE_SCALE * self.scale_factor)
+        
+        return pygame.transform.scale(Brain.original_sprite, (new_w, new_h))
 
     # ------------------------------- Rendering ---------------------------------------
     
@@ -134,7 +150,7 @@ class Brain:
             return
             
         if self.sprites_loaded and self.sprite_image:
-            display_sprite = self.sprite_image.copy()
+            display_sprite = self.get_scaled_sprite()
             if alpha < 255:
                 display_sprite.set_alpha(alpha)
             
