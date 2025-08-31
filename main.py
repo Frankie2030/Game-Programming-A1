@@ -169,18 +169,14 @@ class Game:
 
         # Define exact positions for each spawn point (4x5 grid)
         # Format: (x, y) coordinates for each position
+
+        start_x, start_y = 155, 75
+        x_gap, y_gap = 155, 115
         spawn_positions = [
-            # Row 1 (top row) - adjusted right and down
-            (165, 75), (325, 75), (475, 75), (635, 75), (790, 75),
-            # Row 2 - adjusted right and down
-            (165, 190), (325, 190), (475, 190), (635, 190), (790, 190),
-            # Row 3 - adjusted right and down
-            (165, 305), (325, 305), (475, 305), (635, 305), (790, 305),
-            # Row 4 (bottom row) - adjusted right and down
-            (165, 415), (325, 415), (475, 415), (635, 415), (790, 415)
+            (start_x + col * x_gap, start_y + row * y_gap)
+            for row in range(rows)
+            for col in range(cols)
         ]
-
-
 
         spawn_points = []
         for pos in spawn_positions:
