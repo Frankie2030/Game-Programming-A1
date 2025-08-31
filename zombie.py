@@ -180,7 +180,58 @@ class Zombie:
 
     def update_scale_factor(self, new_scale_factor: float) -> None:
         """Update the zombie's scale factor for responsive sizing."""
-        self.scale_factor = new_scale_factor
+        if self.scale_factor != new_scale_factor:
+            self.scale_factor = new_scale_factor
+            # Reload sprites with new scale factor to ensure proper sizing
+            self._reload_sprites_with_new_scale()
+
+    def _reload_sprites_with_new_scale(self) -> None:
+        """Reload zombie sprites with the current scale factor for responsive sizing."""
+        if not Zombie.sprites_loaded or not Zombie.sprite_sheet:
+            return
+            
+        # Clear existing scaled sprites
+        Zombie.normal_frames.clear()
+        Zombie.attack_frames.clear()
+        Zombie.death_frames.clear()
+        
+        # Get new scaled size
+        out_w, out_h = self._scaled_size(self.scale_factor)
+        
+        sheet_width, sheet_height = Zombie.sprite_sheet.get_size()
+        cols, rows = 11, 12
+        sprite_width = sheet_width // cols
+        sprite_height = sheet_height // rows
+        
+        # Reload normal frames
+        normal_positions = [
+            (0, 0), (1, 0), (2, 0), (3, 0),
+            (0, 1), (1, 1), (2, 1), (3, 1),
+        ]
+        for col, row in normal_positions:
+            x = col * sprite_width
+            y = row * sprite_height
+            rect = pygame.Rect(x, y, sprite_width, sprite_height)
+            frame = Zombie.sprite_sheet.subsurface(rect)
+            Zombie.normal_frames.append(pygame.transform.scale(frame, (out_w, out_h)))
+        
+        # Reload attack frames
+        attack_positions = [(4, 2), (5, 2), (6, 2), (7, 2)]
+        for col, row in attack_positions:
+            x = col * sprite_width
+            y = row * sprite_height
+            rect = pygame.Rect(x, y, sprite_width, sprite_height)
+            frame = Zombie.sprite_sheet.subsurface(rect)
+            Zombie.attack_frames.append(pygame.transform.scale(frame, (out_w, out_h)))
+        
+        # Reload death frames
+        death_positions = [(0, 10), (1, 10), (2, 10), (3, 10)]
+        for col, row in death_positions:
+            x = col * sprite_width
+            y = row * sprite_height
+            rect = pygame.Rect(x, y, sprite_width, sprite_height)
+            frame = Zombie.sprite_sheet.subsurface(rect)
+            Zombie.death_frames.append(pygame.transform.scale(frame, (out_w, out_h)))
 
     def create_hit_effects(self, hit_pos: tuple[int, int]) -> None:
         """Create particle effects when zombie is hit."""

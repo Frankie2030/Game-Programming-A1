@@ -313,9 +313,15 @@ class Game:
             # Reload background with new size
             self.load_background()
             
+            # Store old spawn points for entity relocation
+            old_spawn_points = self.spawn_points.copy()
+            
             # Recalculate spawn points for new dimensions
             self.spawn_points = self.make_spawn_points()
             self.spawner.update_spawn_points(self.spawn_points)
+            
+            # Relocate existing entities to new spawn point positions
+            self.relocate_entities_to_new_spawn_points(old_spawn_points)
             
             # Update zombie and brain scaling
             self.update_entity_scaling(scale_factor)
@@ -326,6 +332,38 @@ class Game:
             print(f"Window resized to {new_width}x{new_height} with scale factor {scale_factor:.2f}")
             print(f"Screen surface size: {self.screen.get_size()}")
             print(f"Current dimensions: {self.current_width}x{self.current_height}")
+
+    def relocate_entities_to_new_spawn_points(self, old_spawn_points: list[SpawnPoint]) -> None:
+        """
+        Relocate existing zombies and brains to their new spawn point positions
+        after window resize. This ensures entities stay in the correct relative
+        positions on the screen.
+        """
+        # Create a mapping from old spawn point positions to new spawn point positions
+        # We'll match them based on their relative grid position (row, column)
+        old_to_new_mapping = {}
+        
+        # Calculate grid positions for old spawn points (5 columns, 4 rows)
+        cols, rows = 5, 4
+        for i, old_spawn in enumerate(old_spawn_points):
+            row = i // cols
+            col = i % cols
+            # Find the corresponding new spawn point at the same grid position
+            new_index = row * cols + col
+            if new_index < len(self.spawn_points):
+                old_to_new_mapping[old_spawn] = self.spawn_points[new_index]
+        
+        # Update zombie spawn point references
+        for zombie in self.zombies:
+            if zombie.spawn in old_to_new_mapping:
+                zombie.spawn = old_to_new_mapping[zombie.spawn]
+                print(f"Relocated zombie from {zombie.spawn.pos} to new position")
+        
+        # Update brain spawn point references
+        for brain in self.brains:
+            if brain.spawn in old_to_new_mapping:
+                brain.spawn = old_to_new_mapping[brain.spawn]
+                print(f"Relocated brain from {brain.spawn.pos} to new position")
 
     def update_entity_scaling(self, scale_factor: float) -> None:
         """Update scaling for all game entities (zombies, brains, etc.)."""
