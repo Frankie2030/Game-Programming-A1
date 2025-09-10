@@ -3,33 +3,79 @@
 A Python-based whack-a-mole style game built with Pygame, featuring zombies that emerge from tombstones in a spooky graveyard setting.
 
 ## Features
-- Whack zombies before they attack you. You start with 3 brains (lives).
-- Level up by killing zombies to gain extra lives. Brain pickups also appear for bonus lives.
-- Press P to pause the game.
-- Toggle F for FPS display, B for hitbox visualization.
-- Audio controls available in main menu with volume sliders.
 
-## Controls
-- Left Click: Whack zombies/collect brains
-- P: Pause/Resume
-- M: Toggle mute
-- F: Toggle FPS display
-- B: Toggle hitbox display
-- R: Reset game
-- ESC: Quit
+Whack-a-Zombie is an arcade-style game where players must click on zombie heads as they emerge from tombstones. The game features:
 
-## How to Run
+- **20 spawn points** arranged in a 4x5 grid matching background tombstones
+- **Progressive difficulty** with level-based scaling
+- **Brain pickups** that grant extra lives
+- **Comprehensive HUD** showing score, accuracy, and progress
+- **Audio support** with background music and sound effects
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.8 or higher
+- Pygame library
+
+### Installation
+
+1. Clone or download the project files
+2. Navigate to the project directory
+3. Add environment & Install dependencies:
+
 ```bash
-pip install pygame
-python main.py
+python3 -m venv venv
+source venv/bin/activate
+python3 -m pip install -r requirements.txt
 ```
+
+### Running the Game
+
+```bash
+python3 main.py
+```
+
+### Build the executable file .exe
+
+```bash
+python3 -m pip install pyinstaller
+pyinstaller --onefile --windowed --name "WhackZombie" --add-data "assets:assets" main.py 
+```
+
+## Game Controls
+
+| Key | Action |
+|-----|--------|
+| **Left Mouse Button** | Whack zombies / Collect brains |
+| **P** | Pause / Resume game |
+| **F** | Toggle FPS display |
+| **R** | Reset current run |
+| **M** | Mute / Unmute audio |
+| **ESC** | Quit game |
+| **SPACE/ENTER** | Start game (from start screen) |
+
 
 # Rubric-based Features
 
 ## Required Features
 
 ### Background with multiple zombie spawn locations - 2 pts
+
+**Requirement**: Provide a background scene with several distinct positions where zombies can appear. Recommendation: at least 6 clearly separated spawn points distributed across the playfield.
+
+**Implementation**:
+
 The game features 20 spawn points (4 rows × 5 columns) positioned to align with tombstones in the background image.
+
+**Details**: 
+
+- **20 spawn points** arranged in a **4×5 grid** (exceeds requirement of 6)
+- Background image: `assets/game_background.png` with tombstone graphics
+- Spawn points positioned at pixel coordinates aligned with tombstones
+- Responsive positioning that scales with window resizing
+- SpawnPoint model with position and radius attributes
 
 ```python
 # main.py
@@ -55,8 +101,22 @@ def make_spawn_points(self) -> list[SpawnPoint]:
 BACKGROUND_PATH = os.path.join(ASSETS_DIR, "game_background.png")
 ```
 
+---
+
 ### Zombie design (sprite/art) - 1 pt
+
+**Requirement**: Include a distinct zombie visual (head or full body). Ensure consistent art style; credit sources if you use third-party assets.
+
+**Implementation**:
+
 Zombies use a sprite sheet with multiple animation frames for idle, attack, and death states.
+
+**Assets**: `assets/ZombieSprite_166x144.png` - sprite sheet with multiple zombie states
+
+**Details**:
+
+- Multiple animated sprite frames for different states (normal, attack, death)
+- Consistent pixel art style throughout
 
 ```python
 # src/zombie.py
@@ -70,8 +130,27 @@ def load_sprites(cls):
         death_positions = [(0, 10), (1, 10), (2, 10), (3, 10)]
 ```
 
+---
+
 ### Zombie head display and lifetime - 2 pts
+
+**Requirement**: 
+
+- 1 pt: The zombie head appears and persists until hit (no auto-disappear)
+- 2 pts: The zombie head has a timer and automatically disappears after a set duration
+
+**Implementation** (2 pts achieved):
+
 Zombies have configurable lifetimes and automatically attack (dealing damage) after their timer expires.
+
+**Details**:
+
+- **Timer-based system**: Zombies have configurable lifetime (800-2000ms range)
+- **Visual timer bar** above each zombie showing remaining time
+- **Level-based scaling**: Lifetime decreases as level increases
+- **Auto-attack**: Zombies attack when timer expires (if not hit)
+- **Animation states**: Spawn → Active → Attack/Hit → Despawn
+
 
 ```python
 # src/zombie.py
@@ -96,10 +175,31 @@ def update(self, now_ms: int) -> bool:
 MAX_LIFETIME_MS = 2000
 MIN_LIFETIME_MS = 800
 ATTACK_ANIM_MS = 300
+LEVEL_LIFETIME_DECREASE = 100  # ms per level
+
+# src/spawner.py - lifetime calculation
+lifetime = MAX_LIFETIME_MS - (level - 1) * LEVEL_LIFETIME_DECREASE
+lifetime = max(MIN_ZOMBIE_LIFETIME, lifetime)
 ```
 
+---
+
 ### Mouse interaction / hit detection - 3 pts
+
+**Requirement**: Capture mouse click events at coordinates (x, y). Determine whether the click hits the zombie's head (use a hitbox or pixel-perfect test). Prevent double-counting on a single click; ignore clicks while animations are finishing.
+
+**Implementation**:
+
 Comprehensive click handling with rectangle-based hit detection and priority system.
+
+**Details**:
+
+- **Rectangle-based hitbox detection** for precise collision
+- **Priority system**: Brain pickups checked before zombies
+- **State-based protection**: No hits during attack animations
+- **Single-hit prevention**: Zombies marked as hit immediately
+- **Comprehensive logging**: All clicks logged with coordinates and results
+- **Debug mode**: Visual hitbox display (press 'B')
 
 ```python
 # main.py
@@ -138,8 +238,27 @@ def get_hitbox_rect(self, now_ms: int) -> pygame.Rect:
     return hitbox_rect
 ```
 
+---
+
 ### Score output (HUD) - 2 pts
+
+**Requirement**: 
+
+- 1 pt: Display either hits or misses
+- 2 pts: Display both hits and misses, and show a differential or ratio (accuracy percent)
+
+**Implementation** (2 pts achieved):
+
 Comprehensive HUD displaying hits, misses, accuracy percentage, level, and lives.
+
+**Details**:
+
+- **Comprehensive statistics**: Hits, misses, accuracy percentage
+- **Level progression**: Current level and progress toward next level
+- **Lives system**: Visual brain icons showing remaining lives
+- **Responsive layout**: Left/right split design that adapts to window size
+- **Additional metrics**: Level, zombies killed progress
+- **Real-time updates**: All stats update immediately on game events
 
 ```python
 # ui.py
@@ -162,7 +281,21 @@ def draw(self, surf: pygame.Surface, hits: int, misses: int, lives: int, level: 
 ## Bonus Features
 
 ### Audio
+
 Background music, hit sound effects, and level-up sounds with volume controls.
+
+**Methods**: 
+
+- `Game.init_audio()` 
+- `Game.toggle_mute()` 
+
+**Features**:
+
+- **Background music**: Looped ambient music (`assets/bg_music.mp3`)
+- **Hit sound effects**: Distinct sound when zombies are hit (`assets/hit.mp3`)
+- **Level-up audio**: Special sound for level progression (`assets/level_up.wav`)
+- **Volume controls**: Separate BGM and SFX volume sliders on start screen
+- **Mute toggle**: 'M' key to mute/unmute all audio
 
 ```python
 # main.py
@@ -178,8 +311,24 @@ def init_audio(self) -> None:
         self.snd_level_up = pygame.mixer.Sound(LEVEL_UP_SFX_PATH)
 ```
 
+---
+
 ### Hit Effects
+
 Particle effects for both zombie hits and hammer strikes with color-coded feedback.
+
+**Methods**: 
+
+- `Game.create_hammer_hit_effect()` 
+- `Zombie.create_hit_effects()`
+- `Game.draw_life_loss_flash()`
+
+**Features**:
+
+- **Hammer impact particles**: Sparks and dust on every click
+- **Zombie hit particles**: Colorful explosion when zombies are hit
+- **Screen flash effects**: Red flash when losing lives
+- **Hit flash**: Zombies flash white when hit
 
 ```python
 # src/zombie.py
@@ -197,8 +346,25 @@ def create_hit_effects(self, hit_pos: tuple[int, int]) -> None:
         self.hit_particles.append(particle)
 ```
 
+---
+
 ### Spawn/Despawn Animation
+
 Smooth scale-based animations for zombie appearance and disappearance.
+
+**Methods**:
+
+- `Zombie.get_vertical_offset()` 
+- `Zombie.create_spawn_particles()` 
+- `Brain.get_alpha()` 
+
+**Features**:
+
+- **Rise animation**: Zombies emerge from ground with eased motion
+- **Sink animation**: Zombies sink back when hit or attacking
+- **Spawn particles**: Dust and glow effects when zombies appear
+- **Brain fade**: Brains fade in/out smoothly
+- **Attack animation**: Zombies bounce when attacking
 
 ```python
 # src/zombie.py
@@ -223,6 +389,7 @@ def get_scale_factor(self, now_ms: int) -> float:
 ## Technical Features (not on rubric)
 
 ### Responsive Design
+
 Window resizing support with scaled UI elements and spawn points.
 
 ```python
@@ -243,7 +410,10 @@ def handle_resize(self, new_width: int, new_height: int) -> None:
     self.update_font_scaling(scale_factor)
 ```
 
+---
+
 ### Pause System
+
 Pause-aware timing that excludes paused time from game logic.
 
 ```python
@@ -269,7 +439,10 @@ def toggle_pause(self) -> None:
         self.paused = True
 ```
 
+---
+
 ### Level Progression
+
 Difficulty scaling with faster spawns and shorter zombie lifetimes.
 
 ```python
@@ -296,7 +469,10 @@ def update_level(self) -> None:
         self.lives = min(MAX_LIVES, self.lives + 1)
 ```
 
+---
+
 ### Brain Pickup System
+
 Collectible items that grant extra lives with priority click handling.
 
 ```python
@@ -326,7 +502,10 @@ def maybe_spawn_brain(self, now_ms: int, zombies: list[Zombie], brains: list[Bra
                 brains.append(Brain(spawn, born_at_ms=now_ms))
 ```
 
+---
+
 ### Debug Visualization
+
 Toggleable hitbox and FPS display for development and testing.
 
 ```python
@@ -360,3 +539,19 @@ def draw_hitbox(self, surf: pygame.Surface, now_ms: int) -> None:
         color = (0, 255, 0)      # Green when hittable
     pygame.draw.rect(surf, color, hitbox_rect, 2)
 ```
+
+---
+
+## License
+
+This project is created for educational purposes as part of Assignment 1.
+
+## Contributing
+
+This is an academic project, but suggestions for improvements are welcome!
+
+---
+
+**Happy Zombie Whacking! 🧟‍♂️🔨**
+
+---
