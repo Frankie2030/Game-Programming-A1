@@ -1,21 +1,4 @@
-"""Game entry point and loop orchestration for Whack-a-Zombie.
-
-Notes
------
-- Uses a capped FPS loop and all timings in milliseconds via
-  ``pygame.time.get_ticks()``, keeping spawn timing independent of frame rate.
-- Optional assets can be placed in ``assets/``. The game gracefully handles
-  missing audio or sprites.
-- Includes start screen with volume sliders, HUD, and a restartable game over
-  screen.
-
-Run
----
-```
-pip install -r requirements.txt
-python main.py
-```
-"""
+"""Game entry point"""
 
 from __future__ import annotations
 
@@ -24,61 +7,35 @@ import pygame
 import random
 import math
 
-from constants import *
-from models import SpawnPoint
-from zombie import Zombie
-from brain import Brain
-from logger import GameLogger
+from src.constants import *
+from src.models import SpawnPoint
+from src.zombie import Zombie
+from src.brain import Brain
+from src.logger import GameLogger
 from ui import HUD, GameOverScreen
-from spawner import Spawner
+from src.spawner import Spawner
 
 class Game:
     """
     Main game controller: initializes subsystems, runs the loop, handles input,
     updates entities, and draws the frame.
-    
-    Features:
-    - Resizable window support with responsive UI
-    - Zombie spawn effects with particles and glow
-    - Hammer hit effects with impact particles
-    - Audio system with volume controls
-    - Level progression system
-    - Brain pickup mechanics for extra lives
-    
-    Window Management:
-    - Supports window resizing with pygame.RESIZABLE
-    - Automatically recalculates spawn points and UI elements
-    - Maintains aspect ratio and positioning on resize
-    
-    Effects System:
-    - Spawn effects: dust particles and yellow glow when zombies appear
-    - Hit effects: colorful impact particles when zombies are hit
-    - Hammer effects: spark and dust particles on every click
-    - Life loss flash: red screen flash when losing lives
     """
 
     def __init__(self) -> None:
-        """Initialize the game with all subsystems."""
+        """Initialize subsystems, load assets, and set initial game state."""
         pygame.init()
-        pygame.display.set_caption("Whack-a-Zombie — Assignment 1")
+        pygame.display.set_caption("Whack-a-Zombie")
         # Make window resizable
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
         self.font_small = pygame.font.Font(FONT_NAME, FONT_SIZE_MEDIUM)
         self.font_big = pygame.font.Font(FONT_NAME, FONT_SIZE_LARGE)
-
-        # Track current window size
         self.current_width = WIDTH
         self.current_height = HEIGHT
-
-        # Load background image
         self.background_img: pygame.Surface | None = None
         self.load_background()
-        
         self.spawn_points: list[SpawnPoint] = self.make_spawn_points()
         self.spawner = Spawner(self.spawn_points)
-
-        # Initialize logging system
         self.logger = GameLogger(LOG_FILE)
 
         # Game state
@@ -94,27 +51,20 @@ class Game:
         self.total_pause_time = 0  # Cumulative time spent paused (in ms)
         self.pause_start_time = None  # When current pause started (None if not paused)
         
-        # Audio volumes
+        # Audio
         self.bgm_volume = 0.5
         self.sfx_volume = 0.7
-        
-        # UI components
-        self.hud = HUD(self.font_small)
-        self.game_over_screen = GameOverScreen(self.font_big, self.font_small)
-
-        # Mouse cursor
-        self.hammer_cursor = None
-        self.load_hammer_cursor()
-        # Don't hide cursor initially - let start screen handle it
-        
-        # Hammer hit effects
-        self.hammer_hit_effects = []
-
-        # Audio
         self.muted = False
         self.snd_hit: pygame.mixer.Sound | None = None
         self.snd_level_up: pygame.mixer.Sound | None = None
         self.init_audio()
+
+        self.hud = HUD(self.font_small)
+        self.game_over_screen = GameOverScreen(self.font_big, self.font_small)
+
+        self.hammer_cursor = None
+        self.load_hammer_cursor()
+        self.hammer_hit_effects = []
 
     def reset_game(self) -> None:
         """Reset all game state to initial values."""
@@ -124,23 +74,21 @@ class Game:
         self.misses = 0
         self.lives = INITIAL_LIVES
         self.level = 1
-        # self.zombies_killed = 0
         self.game_over = False
         self.spawner.next_spawn_at = 0  # Reset spawner timing
         self.spawner.next_brain_check_at = 0  # Reset brain spawning timing
-        # Set cursor for gameplay
         pygame.mouse.set_visible(False)  # Hide system cursor for hammer display
 
     def get_game_time(self) -> int:
         """
         Get the current game time in milliseconds, excluding time spent paused.
-        This is the time that should be used for all game logic and entity updates.
         
         Returns
         -------
         int
             Current game time in milliseconds (wall time minus total pause time)
         """
+        # Uses a capped FPS loop and all timings in milliseconds, keeping spawn timing independent of frame rate
         wall_time = pygame.time.get_ticks()
         
         # If currently paused, don't count the current pause session yet
@@ -152,35 +100,21 @@ class Game:
             return wall_time - self.total_pause_time
 
     def update_level(self) -> None:
-        """Update game level based on zombies killed (hits, as a zombie only requires 1 hit to die)."""
+        """Update game level based on zombies killed."""
         new_level = min(MAX_LEVEL, (self.hits // ZOMBIES_PER_LEVEL) + 1)
         if new_level > self.level:
-            old_level = self.level
             self.level = new_level
-            
-            # Award +1 life on level up (capped at MAX_LIVES)
-            old_lives = self.lives
             self.lives = min(MAX_LIVES, self.lives + 1)
-            lives_gained = self.lives - old_lives
-            
-            # Play level up sound effect
             if self.snd_level_up and not self.muted:
                 self.snd_level_up.play()
-            
-            # Log and display level up
             self.logger.log_level_up(self.level)
-            if lives_gained > 0:
-                print(f"Level up! Now level {self.level} - Bonus life granted! ({self.lives}/{MAX_LIVES} lives)")
-            else:
-                print(f"Level up! Now level {self.level} - Already at max lives ({MAX_LIVES}/{MAX_LIVES})")
             
 
     # --------------------------------- Setup ----------------------------------------
 
     def load_hammer_cursor(self) -> None:
         """
-        Load hammer cursor or create fallback.
-        Tries to load hammer sprite from assets, falls back to procedural drawing.
+        Load hammer cursor image and set initial size.
         """
         if os.path.exists(HAMMER_PATH):
             self.original_hammer = pygame.image.load(HAMMER_PATH).convert_alpha()
@@ -201,7 +135,6 @@ class Game:
                 width = getattr(self, 'current_width', WIDTH)
                 height = getattr(self, 'current_height', HEIGHT)
                 self.background_img = pygame.transform.scale(img, (width, height))
-                print(f"Successfully loaded background from: {BACKGROUND_PATH} scaled to {width}x{height}")
             except Exception as e:
                 print(f"Failed to load background: {e}")
                 self.background_img = None
@@ -212,11 +145,9 @@ class Game:
     def make_spawn_points(self) -> list[SpawnPoint]:
         """
         20 spawn points (4 rows x 5 columns) positioned to align with tombs in background image.
-        Now responsive to window resizing - calculates positions based on current window dimensions.
         """
-        cols, rows = 5, 4  # 5 columns, 4 rows = 20 total spawn points
-
-        # Get current window dimensions (fallback to constants if not set)
+        cols, rows = 5, 4
+        # Get current window dimensions
         width = getattr(self, 'current_width', WIDTH)
         height = getattr(self, 'current_height', HEIGHT)
         
@@ -250,33 +181,28 @@ class Game:
         for pos in spawn_positions:
             spawn_points.append(SpawnPoint(pos, radius=SPAWN_RADIUS))
 
-        return spawn_points  # 20 spawn points (4x5 grid)
+        return spawn_points
 
     def init_audio(self) -> None:
         """
-        Try to initialize audio & load assets if available (safe to run without).
-        Sets up background music and sound effects with appropriate volumes.
+        Initialize audio & load assets.
         """
         pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
             
-        # Background music (looped) – optional
         if os.path.exists(MUSIC_PATH):
             try:
                 pygame.mixer.music.load(MUSIC_PATH)
                 pygame.mixer.music.set_volume(self.bgm_volume)
                 pygame.mixer.music.play(-1)
-                print(f"Background music loaded and playing from: {MUSIC_PATH}")
             except Exception as e:
                 print(f"Failed to load background music: {e}")
         else:
             print(f"Background music file not found: {MUSIC_PATH}")
             
-        # Hit SFX – optional
         if os.path.exists(HIT_SFX_PATH):
             try:
                 self.snd_hit = pygame.mixer.Sound(HIT_SFX_PATH)
                 self.snd_hit.set_volume(self.sfx_volume)
-                print(f"Hit sound effect loaded from: {HIT_SFX_PATH}")
             except Exception as e:
                 print(f"Failed to load hit sound effect: {e}")
                 self.snd_hit = None
@@ -284,12 +210,10 @@ class Game:
             print(f"Hit sound effect file not found: {HIT_SFX_PATH}")
             self.snd_hit = None
             
-        # Level Up SFX – optional
         if os.path.exists(LEVEL_UP_SFX_PATH):
             try:
                 self.snd_level_up = pygame.mixer.Sound(LEVEL_UP_SFX_PATH)
                 self.snd_level_up.set_volume(self.sfx_volume)
-                print(f"Level up sound effect loaded from: {LEVEL_UP_SFX_PATH}")
             except Exception as e:
                 print(f"Failed to load level up sound effect: {e}")
                 self.snd_level_up = None
@@ -304,7 +228,7 @@ class Game:
             self.current_height = new_height
             
             # Calculate scale factor for responsive sizing
-            base_width, base_height = 960, 540
+            base_width, base_height = WIDTH, HEIGHT
             scale_factor = min(new_width / base_width, new_height / base_height)
             
             # Clear the screen to prevent visual artifacts
@@ -380,7 +304,6 @@ class Game:
         """Update font sizes for responsive text scaling."""
         # Calculate new font sizes based on scale factor
         new_small_size = max(12, int(FONT_SIZE_SMALL * scale_factor))
-        new_medium_size = max(14, int(FONT_SIZE_MEDIUM * scale_factor))
         new_large_size = max(18, int(FONT_SIZE_LARGE * scale_factor))
         
         # Update font objects
@@ -418,7 +341,7 @@ class Game:
         """
         clock = pygame.time.Clock()
         
-        # Hide system cursor and use hammer cursor throughout
+        # Hide system cursor and use hammer cursor
         pygame.mouse.set_visible(False)
         
         while True:
@@ -569,7 +492,6 @@ class Game:
         """Main game loop: process events, update, render; exits on quit request."""
         running = True
         while running:
-            now = pygame.time.get_ticks()
             current_fps = self.clock.get_fps()
             
             # Update FPS samples for smoothing
@@ -596,8 +518,6 @@ class Game:
                         self.show_fps = not self.show_fps
                     elif event.key == pygame.K_b:
                         self.show_hitboxes = not self.show_hitboxes
-                    elif event.key == pygame.K_d:
-                        self.hud.toggle_debug()
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if self.game_over:
                         self.reset_game()
@@ -632,8 +552,8 @@ class Game:
                     brain.update(game_time)
                 
                 # Remove dead zombies and brains
-                self.zombies = [z for z in self.zombies if z.is_active(game_time)]
-                self.brains = [b for b in self.brains if b.is_active(game_time)]
+                self.zombies = [z for z in self.zombies if not z.dead]
+                self.brains = [b for b in self.brains if not b.dead]
 
                 # Spawning
                 self.spawner.maybe_spawn(game_time, self.zombies, self.level, self.brains)
@@ -660,8 +580,6 @@ class Game:
     def handle_click(self, pos: tuple[int, int], now_ms: int) -> None:
         """
         Handle left-clicks: check for brain pickup first, then zombies.
-        Brain pickups award +1 life (capped at 5 max lives).
-        Zombie hits count as normal game progression.
         
         Parameters
         ----------
@@ -674,16 +592,12 @@ class Game:
         for brain in reversed(self.brains):
             if not brain.picked_up and not brain.dead and brain.contains_point(pos):
                 brain.mark_picked_up(now_ms)
-                # Award +1 life (capped at MAX_LIVES)
                 old_lives = self.lives
                 self.lives = min(MAX_LIVES, self.lives + 1)
-                
                 lives_gained = self.lives - old_lives
                 if lives_gained > 0:
-                    print(f"Brain collected! +{lives_gained} life (now {self.lives}/{MAX_LIVES})")
                     self.logger.log_click(pos, True, f"Brain pickup at spawn {brain.spawn.pos} - gained {lives_gained} life")
                 else:
-                    print(f"Brain collected but already at max lives ({MAX_LIVES})")
                     self.logger.log_click(pos, True, f"Brain pickup at spawn {brain.spawn.pos} - no life gained (at max)")
                     
                 return
@@ -692,9 +606,7 @@ class Game:
         for z in reversed(self.zombies):
             if not z.hit and not z.attacking and z.contains_point(pos, now_ms):
                 z.mark_hit(now_ms)
-                self.hits += 1
-                # self.zombies_killed += 1
-                
+                self.hits += 1                
                 self.create_hammer_hit_effect(pos)
                 
                 if self.snd_hit and not self.muted:
@@ -703,18 +615,13 @@ class Game:
                     except Exception:
                         pass
                 
-                # Log the successful hit
                 self.logger.log_click(pos, True, f"Zombie at spawn {z.spawn.pos}")
-                
-                # Update level based on kills
                 self.update_level()
                 return
                 
         # No entity consumed the click
         self.misses += 1
         self.logger.log_click(pos, False, "No target hit")
-        
-        # Create hammer hit effect for miss too
         self.create_hammer_hit_effect(pos)
 
     def toggle_pause(self) -> None:
@@ -766,7 +673,6 @@ class Game:
                 'max_life': 120,  # Increased max lifetime
                 'alpha': 255,
                 'size': random.randint(3, 6),  # Slightly larger particles
-                'type': random.choice(['spark', 'dust'])
             }
             self.hammer_hit_effects.append(effect)
     
@@ -791,10 +697,7 @@ class Game:
                 # Create particle surface with alpha
                 particle_surf = pygame.Surface((effect['size'], effect['size']), pygame.SRCALPHA)
                 
-                if effect['type'] == 'spark':
-                    color = (255, 255, 100, effect['alpha'])  # Yellow spark
-                else:
-                    color = (139, 69, 19, effect['alpha'])   # Brown dust
+                color = (255, 255, 100, effect['alpha'])
                 
                 pygame.draw.circle(particle_surf, color, (effect['size']//2, effect['size']//2), effect['size']//2)
                 self.screen.blit(particle_surf, (effect['x'] - effect['size']//2, effect['y'] - effect['size']//2))
@@ -808,7 +711,9 @@ class Game:
             self.screen.blit(flash_surface, (0, 0))
 
     def draw_background(self, surf: pygame.Surface) -> None:
-        """Draw the game background image, fallback if asset not avialable"""
+        """
+        Draw the game background image.
+        """
         if self.background_img:
             surf.blit(self.background_img, (0, 0))
         else:
@@ -843,38 +748,31 @@ class Game:
         # Draw active zombies
         for z in self.zombies:
             z.draw(self.screen, now_ms)
-            # Draw hitboxes if debug mode is enabled
             if self.show_hitboxes:
                 z.draw_hitbox(self.screen, now_ms)
             
         # Draw active brains
         for brain in self.brains:
             brain.draw(self.screen, now_ms)
-            # Draw hitboxes if debug mode is enabled
             if self.show_hitboxes:
                 brain.draw_hitbox(self.screen, now_ms)
 
-        # HUD
         self.hud.draw(self.screen, self.hits, self.misses, self.lives, 
                       self.level, self.show_fps, fps, self.paused, self.muted)
 
-        # Title / hints - centered at top
         if not self.game_over:
-            title = self.font_big.render("Whack-a-Zombie", True, TEXT_COLOR)
-            title_rect = title.get_rect(center=(self.current_width//2, HUD_PADDING + title.get_height()//2))
-            self.screen.blit(title, title_rect)
+            # title = self.font_big.render("Whack-a-Zombie", True, TEXT_COLOR)
+            # title_rect = title.get_rect(center=(self.current_width//2, HUD_PADDING + title.get_height()//2))
+            # self.screen.blit(title, title_rect)
             
-            hint_text = "[LMB] hit | [P] pause | [F] fps | [B] hitbox | [D] debug | [R] reset | [M] mute | [ESC] quit"
+            hint_text = "[LMB] hit | [P] pause | [F] fps | [B] hitbox | [R] reset | [M] mute | [ESC] quit"
             hint = self.font_small.render(hint_text, True, (200, 200, 200))
-            hint_rect = hint.get_rect(center=(self.current_width//2, HUD_PADDING + title.get_height() + 8 + hint.get_height()//2))
+            # hint_rect = hint.get_rect(center=(self.current_width//2, HUD_PADDING + title.get_height() + 8 + hint.get_height()//2))
+            hint_rect = hint.get_rect(center=(self.current_width//2, HUD_PADDING + hint.get_height()//2))
             self.screen.blit(hint, hint_rect)
 
-        # Screen effects
         self.draw_life_loss_flash()
-        
-        # Draw hammer hit effects
         self.draw_hammer_hit_effects()
-        
         if self.game_over:
             self.game_over_screen.draw(self.screen, self.hits, self.misses)
         self.draw_hammer_cursor()

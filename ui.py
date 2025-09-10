@@ -1,14 +1,10 @@
-"""UI components: HUD and Game Over screen for Whack-a-Zombie.
-
-Provides readouts for level progression, lives, hits, misses, accuracy, FPS,
-and pause/mute indicators. Uses right/left HUD layout to avoid the play area.
-"""
+"""HUD and Game Over screen"""
 
 import pygame
 import os
 
-from constants import (
-    WIDTH, HEIGHT, HUD_PADDING, TEXT_COLOR, 
+from src.constants import (
+    HUD_PADDING, TEXT_COLOR, 
     MAX_LEVEL, ZOMBIES_PER_LEVEL, FONT_NAME,
     FONT_SIZE_SMALL, BRAIN_PATH
 )
@@ -20,7 +16,6 @@ class HUD:
         self.font = font
         self.small_font = pygame.font.Font(FONT_NAME, FONT_SIZE_SMALL)
         self.brain_icon = self.load_brain_icon()
-        self._debug_hud = False  # Debug mode for HUD positioning
     
     def update_fonts(self, new_font: pygame.font.Font) -> None:
         """Update fonts for responsive scaling."""
@@ -33,11 +28,6 @@ class HUD:
             base_size = 20
             new_size = max(16, int(base_size * scale_factor))
             self.brain_icon = pygame.transform.scale(self.original_brain_icon, (new_size, new_size))
-    
-    def toggle_debug(self) -> None:
-        """Toggle debug mode for HUD positioning."""
-        self._debug_hud = not self._debug_hud
-        print(f"HUD Debug mode: {'ON' if self._debug_hud else 'OFF'}")
         
     def load_brain_icon(self) -> pygame.Surface | None:
         """Load brain icon for lives display."""
@@ -59,11 +49,11 @@ class HUD:
         total = hits + misses
         acc = (hits / total * 100.0) if total > 0 else 0.0
         
-        # Get current surface dimensions for responsive positioning
+        # Get current surface dimensions
         current_width = surf.get_width()
         current_height = surf.get_height()
         
-        # LEFT SIDE: Level and Lives - Responsive positioning
+        # LEFT SIDE: Level and Lives
         # Scale padding based on window size
         responsive_padding = max(8, int(HUD_PADDING * (min(current_width, current_height) / 540)))
         left_x = responsive_padding
@@ -92,10 +82,6 @@ class HUD:
             icon_offset = self.brain_icon.get_width() + 5
             lives_text = self.font.render(f": {lives}", True, TEXT_COLOR)
             surf.blit(lives_text, (left_x + icon_offset, left_y))
-        else:
-            # Fallback to text only format
-            lives_text = self.font.render(f"Lives: {lives}", True, TEXT_COLOR)
-            surf.blit(lives_text, (left_x, left_y))
         
         # RIGHT SIDE: Stats and optional indicators - Responsive positioning
         # Calculate right side position based on content width and window size
@@ -104,7 +90,6 @@ class HUD:
             f"Hits: {hits}",
             f"Misses: {misses}",
             f"Accuracy: {acc:.1f}%",
-            # f"Zombies Killed: {zombies_killed}"
         ]
         
         # Find the widest stat line to calculate proper positioning
@@ -116,18 +101,10 @@ class HUD:
         right_x = current_width - stats_width - responsive_padding
         right_y = responsive_padding
         
-        # Debug: Print HUD positioning info (can be removed in production)
-        if hasattr(self, '_debug_hud') and self._debug_hud:
-            print(f"HUD Debug - Window: {current_width}x{current_height}, Padding: {responsive_padding}")
-            print(f"  Left: ({left_x}, {left_y}), Right: ({right_x}, {right_y})")
-            print(f"  Stats width: {stats_width}")
-        
-        # Stats
         right_stats = [
             f"Hits: {hits}",
             f"Misses: {misses}",
             f"Accuracy: {acc:.1f}%",
-            # f"Zombies Killed: {zombies_killed}"
         ]
         
         for line in right_stats:
@@ -186,13 +163,12 @@ class GameOverScreen:
         overlay.fill((0, 0, 0, 180))
         surf.blit(overlay, (0, 0))
         
-        # Game Over title - Responsive positioning
         game_over_text = self.font_big.render("GAME OVER", True, (255, 100, 100))
         title_y = max(80, int(current_height * 0.25))  # 25% from top, minimum 80px
         game_over_rect = game_over_text.get_rect(center=(current_width//2, title_y))
         surf.blit(game_over_text, game_over_rect)
         
-        # Final stats - Responsive positioning
+        # Final stats
         total = hits + misses
         acc = (hits / total * 100.0) if total > 0 else 0.0
         score = max(0, hits - misses)
@@ -213,7 +189,6 @@ class GameOverScreen:
             surf.blit(text_surf, text_rect)
             y_offset += 30
             
-        # Restart button - Responsive positioning
         mouse_x, mouse_y = pygame.mouse.get_pos()
         button_width = min(200, int(current_width * 0.3))  # 30% of window width, max 200px
         button_height = min(50, int(current_height * 0.08))  # 8% of window height, max 50px
@@ -231,7 +206,6 @@ class GameOverScreen:
         restart_rect = restart_text.get_rect(center=button_rect.center)
         surf.blit(restart_text, restart_rect)
         
-        # Instructions - Responsive positioning
         inst_text = self.font_small.render("Press R to restart or ESC to quit", True, (150, 150, 150))
         inst_y = max(button_y + button_height + 20, int(current_height * 0.8))  # Below button or 80% from top
         inst_rect = inst_text.get_rect(center=(current_width // 2, inst_y))
