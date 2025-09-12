@@ -57,10 +57,10 @@ pyinstaller --onefile --windowed --name "WhackZombie" --add-data "assets:assets"
 | **SPACE/ENTER** | Start game (from start screen) |
 
 ## Asset Sources
-- Zombie design: [Github repo: aayush-musyaju/plant-vs-zombies](https://github.com/aayush-musyaju/plant-vs-zombies/tree/main/public/assets/images/Zombies)
-- Background: [To be updated](yes)
-- SFX: [Github repo: ULTIMATE-Mystery/Game-programming-HCMUT-Semester-222](https://github.com/ULTIMATE-Mystery/Game-programming-HCMUT-Semester-222/tree/Assignment-1/Resources/sounds)
-- BGM: [To be updated](yes)
+- [Zombie design](https://github.com/aayush-musyaju/plant-vs-zombies/tree/main/public/assets/images/Zombies)
+- [Background - To be updated](yes)
+- [SFX](https://github.com/ULTIMATE-Mystery/Game-programming-HCMUT-Semester-222/tree/Assignment-1/Resources/sounds)
+- [BGM - To be updated](yes)
 
 ## License
 
