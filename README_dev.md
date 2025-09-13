@@ -259,9 +259,9 @@ Background music, hit sound effects, and level-up sounds with volume controls.
 
 **Features**:
 
-- **Background music**: Looped ambient music (`assets/bg_music.mp3`)
-- **Hit sound effects**: Distinct sound when zombies are hit (`assets/hit.mp3`)
-- **Level-up audio**: Special sound for level progression (`assets/level_up.wav`)
+- **Background music**: Looped ambient music
+- **Hit sound effects**: Distinct sound when zombies are hit
+- **Level-up audio**: Special sound for level progression
 - **Volume controls**: Separate BGM and SFX volume sliders on start screen
 - **Mute toggle**: 'M' key to mute/unmute all audio
 
