@@ -148,11 +148,9 @@ class GameOverScreen:
         self.font_big = new_font_big
         self.font_small = new_font_small
         
-    def draw(self, surf: pygame.Surface, hits: int, misses: int) -> bool:
+    def draw(self, surf: pygame.Surface, hits: int, misses: int) -> None:
         """
         Draw game over screen.
-        
-        Returns True if restart button is hovered, False otherwise.
         """
         # Get current surface dimensions for responsive positioning
         current_width = surf.get_width()
@@ -188,27 +186,8 @@ class GameOverScreen:
             text_rect = text_surf.get_rect(center=(current_width // 2, y_offset))
             surf.blit(text_surf, text_rect)
             y_offset += 30
-            
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        button_width = min(200, int(current_width * 0.3))  # 30% of window width, max 200px
-        button_height = min(50, int(current_height * 0.08))  # 8% of window height, max 50px
-        button_x = current_width // 2 - button_width // 2
-        button_y = max(y_offset + 30, int(current_height * 0.65))  # Below stats or 65% from top
-        
-        button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
-        button_hovered = button_rect.collidepoint(mouse_x, mouse_y)
-        
-        button_color = (100, 150, 100) if button_hovered else (80, 80, 80)
-        pygame.draw.rect(surf, button_color, button_rect)
-        pygame.draw.rect(surf, TEXT_COLOR, button_rect, 2)
-        
-        restart_text = self.font_small.render("Click to Restart", True, TEXT_COLOR)
-        restart_rect = restart_text.get_rect(center=button_rect.center)
-        surf.blit(restart_text, restart_rect)
-        
+
         inst_text = self.font_small.render("Press R to restart or ESC to quit", True, (150, 150, 150))
-        inst_y = max(button_y + button_height + 20, int(current_height * 0.8))  # Below button or 80% from top
+        inst_y = y_offset + 30
         inst_rect = inst_text.get_rect(center=(current_width // 2, inst_y))
         surf.blit(inst_text, inst_rect)
-        
-        return button_hovered

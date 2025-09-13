@@ -508,7 +508,7 @@ class Game:
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         running = False
-                    elif event.key == pygame.K_r:
+                    elif event.key == pygame.K_r and self.game_over:
                         self.reset_game()
                     elif event.key == pygame.K_m:
                         self.toggle_mute()
@@ -518,13 +518,9 @@ class Game:
                         self.show_fps = not self.show_fps
                     elif event.key == pygame.K_b:
                         self.show_hitboxes = not self.show_hitboxes
-                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self.game_over:
-                        self.reset_game()
-                    elif not self.paused:
-                        # Use pause-aware game time for click handling
-                        game_time = self.get_game_time()
-                        self.handle_click(pygame.mouse.get_pos(), game_time)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.paused and not self.game_over:
+                    game_time = self.get_game_time()
+                    self.handle_click(pygame.mouse.get_pos(), game_time)
 
             # Update game state (only if not paused and not game over)
             if not self.paused and not self.game_over:
@@ -534,8 +530,8 @@ class Game:
                 # Update zombies and check for attacks
                 attacks_this_frame = 0
                 for z in self.zombies:
-                    z.update_spawn_effects(game_time)  # Update spawn effects
-                    z.update_hit_effects(game_time)    # Update hit effects
+                    z.update_spawn_effects(game_time)
+                    z.update_hit_effects(game_time)
                     if z.update(game_time):  # Returns True if zombie attacked (only once per zombie)
                         attacks_this_frame += 1
                 
