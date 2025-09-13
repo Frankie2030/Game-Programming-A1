@@ -47,7 +47,7 @@ MIN_ZOMBIE_LIFETIME = 500
 # Log file settings
 LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "log.md")
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
-MUSIC_PATH = os.path.join(ASSETS_DIR, "bg_music.mp3")
+MUSIC_PATH = os.path.join(ASSETS_DIR, "bg_music.ogg")
 HIT_SFX_PATH = os.path.join(ASSETS_DIR, "hit.mp3")
 LEVEL_UP_SFX_PATH = os.path.join(ASSETS_DIR, "level_up.wav")
 HAMMER_PATH = os.path.join(ASSETS_DIR, "hammer.png")
