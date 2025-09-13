@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# enables forward references and delayed evaluation of type annotations.
+
 """Brain pickup entity that grants a life on click."""
 
 import os
@@ -182,3 +184,5 @@ class Brain:
             color = (0, 255, 0)      # Green when hittable
         # Draw hitbox outline
         pygame.draw.rect(surf, color, hitbox_rect, 2)
+
+        

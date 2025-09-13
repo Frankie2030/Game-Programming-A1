@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-"""Spawn orchestration for zombies and brain pickups. Timing uses ms ticks.
-"""
+# enables forward references and delayed evaluation of type annotations.
+
+"""Spawn orchestration for zombies and brain pickups. Timing uses ms ticks."""
 
 import random
 
@@ -24,9 +25,9 @@ class Spawner:
     """
 
     def __init__(self, spawn_points: list[SpawnPoint]) -> None:
-        self.spawn_points = spawn_points
-        self.next_spawn_at = 0  # ms timestamp for next spawn
-        self.next_brain_check_at = 0  # ms timestamp for next brain spawn check
+        self.spawn_points = spawn_points    # list of spawn points
+        self.next_spawn_at = 0              # ms timestamp for next spawn
+        self.next_brain_check_at = 0        # ms timestamp for next brain spawn check
 
     def update_spawn_points(self, new_spawn_points: list[SpawnPoint]) -> None:
         """Update spawn points when window is resized."""
@@ -43,7 +44,11 @@ class Spawner:
         Pick the next spawn time based on level-adjusted cadence with jitter.
         """
         base_interval = self.get_spawn_interval(level)
-        jitter = random.randint(-150, 220)  # add variability to cadence
+
+        # add variability to cadence
+        # prevent predictable spawns
+        jitter = random.randint(-150, 220)  
+        
         self.next_spawn_at = now_ms + max(200, base_interval + jitter)
 
     def get_available_spawn_points(self, zombies: list[Zombie], brains: list[Brain] | None = None) -> list[SpawnPoint]:
@@ -94,9 +99,11 @@ class Spawner:
             if available_spawns:
                 spawn = random.choice(available_spawns)
                 lifetime = MAX_LIFETIME_MS - (level - 1) * LEVEL_LIFETIME_DECREASE
+                
                 # Robustness: ensure lifetime never drops below configured minimum
                 from .constants import MIN_ZOMBIE_LIFETIME  # local import to avoid cycles
                 lifetime = max(MIN_ZOMBIE_LIFETIME, lifetime)
+
                 new_zombie = Zombie(spawn, born_at_ms=now_ms, lifetime_ms=lifetime)
                 new_zombie.create_spawn_particles()  # Create spawn effects
                 zombies.append(new_zombie)

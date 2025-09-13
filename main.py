@@ -25,6 +25,7 @@ class Game:
         """Initialize subsystems, load assets, and set initial game state."""
         pygame.init()
         pygame.display.set_caption("Whack-a-Zombie")
+
         # Make window resizable
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
         self.clock = pygame.time.Clock()
@@ -43,13 +44,13 @@ class Game:
         self.game_over = False
         self.paused = False
         self.show_fps = False
-        self.show_hitboxes = False  # Toggle for displaying zombie hitboxes
+        self.show_hitboxes = False      # Toggle for displaying zombie hitboxes
         self.fps_samples = []
-        self.life_lost_flash = 0  # Timer for life lost screen flash
+        self.life_lost_flash = 0        # Timer for life lost screen flash
         
         # Pause-aware timing
-        self.total_pause_time = 0  # Cumulative time spent paused (in ms)
-        self.pause_start_time = None  # When current pause started (None if not paused)
+        self.total_pause_time = 0       # Cumulative time spent paused (in ms)
+        self.pause_start_time = None    # When current pause started (None if not paused)
         
         # Audio
         self.bgm_volume = 0.5
@@ -75,9 +76,9 @@ class Game:
         self.lives = INITIAL_LIVES
         self.level = 1
         self.game_over = False
-        self.spawner.next_spawn_at = 0  # Reset spawner timing
-        self.spawner.next_brain_check_at = 0  # Reset brain spawning timing
-        pygame.mouse.set_visible(False)  # Hide system cursor for hammer display
+        self.spawner.next_spawn_at = 0          # Reset spawner timing
+        self.spawner.next_brain_check_at = 0    # Reset brain spawning timing
+        pygame.mouse.set_visible(False)         # Hide system cursor for hammer display
 
     def get_game_time(self) -> int:
         """
@@ -109,7 +110,6 @@ class Game:
                 self.snd_level_up.play()
             self.logger.log_level_up(self.level)
             
-
     # --------------------------------- Setup ----------------------------------------
 
     def load_hammer_cursor(self) -> None:
@@ -776,3 +776,4 @@ class Game:
         pygame.display.flip()
 
 Game().run()
+
