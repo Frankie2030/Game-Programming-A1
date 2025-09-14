@@ -285,6 +285,8 @@ def init_audio(self) -> None:
 
 Particle effects for both zombie hits and hammer strikes with color-coded feedback.
 
+Note: `alpha` là giá trị biểu thị độ trong suốt của một màu hoặc bề mặt (surface). Giá trị alpha nằm trong khoảng từ 0 (hoàn toàn trong suốt) đến 255 (hoàn toàn đục).
+
 **Methods**: 
 
 - `Game.create_hammer_hit_effect()` 
@@ -314,6 +316,46 @@ def create_hit_effects(self, hit_pos: tuple[int, int]) -> None:
         self.hit_particles.append(particle)
 ```
 
+```python
+# main.py
+def draw_life_loss_flash(self) -> None:
+    """Draw screen flash when life is lost."""
+    if self.life_lost_flash > 0:
+        alpha = int(100 * (self.life_lost_flash / LIFE_LOSS_FLASH_MS))
+        flash_surface = pygame.Surface((self.current_width, self.current_height), pygame.SRCALPHA)
+        flash_surface.fill((255, 0, 0, alpha))
+        self.screen.blit(flash_surface, (0, 0))
+```
+
+- Giá trị alpha được tính dựa trên tỷ lệ thời gian còn lại của hiệu ứng (self.life_lost_flash) so với thời gian tối đa (LIFE_LOSS_FLASH_MS). Kết quả là một giá trị từ 0 (khi hiệu ứng kết thúc) đến 100 (khi hiệu ứng bắt đầu), tạo hiệu ứng mờ dần.
+- Tạo một pygame.Surface với kích thước bằng kích thước màn hình (self.current_width, self.current_height) và cờ pygame.SRCALPHA để hỗ trợ độ trong suốt.
+- Đổ màu đỏ (255, 0, 0, alpha) lên surface này.
+- Vẽ surface lên màn hình tại vị trí (0, 0) bằng self.screen.blit.
+
+```python
+def create_hammer_hit_effect(self, hit_pos: tuple[int, int]) -> None:
+    """Create hammer hit effect at click position."""
+    
+    # Create impact particles
+    for _ in range(8):
+        angle = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(1, 3)  # Reduced speed for better visibility
+        dx = math.cos(angle) * speed
+        dy = math.sin(angle) * speed
+        effect = {
+            'x': hit_pos[0],
+            'y': hit_pos[1],
+            'dx': dx,
+            'dy': dy,
+            'life': random.randint(80, 120),  # Increased lifetime
+            'max_life': 120,  # Increased max lifetime
+            'alpha': 255,
+            'size': random.randint(3, 6),  # Slightly larger particles
+        }
+        self.hammer_hit_effects.append(effect)
+```
+- Tạo 8 hạt (particles) cho mỗi cú đánh, mỗi hạt có góc ngẫu nhiên. Tốc độ ngẫu nhiên (speed) từ 1 đến 3 pixel mỗi frame. Tính toán vận tốc theo trục x (dx) và y (dy) dựa trên góc và tốc độ.
+- `alpha` được khởi tạo là 255 (hoàn toàn đục) khi hạt được tạo ra. Nó sẽ được cập nhật trong phương thức `update_hammer_hit_effects` để tạo hiệu ứng mờ dần khi hạt di chuyển và biến mất.
 ---
 
 ### Spawn/Despawn Animation
