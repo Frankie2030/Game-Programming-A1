@@ -46,35 +46,32 @@ python3 -m pip install -r requirements.txt
 ```
 A1/
 ├─ Assignment1_Whack_a_Zombie_Rubric_EN_v2.pdf
-├─ checklist.md
-├─ dev.md
-├─ Dockerfile
-├─ game.spec
-├─ main.py
 ├─ README.md
-├─ requirements.txt
+├─ dev.md
+├─ main.py
 ├─ ui.py
-├─ WhackZombie.spec
+├─ src/
+│  ├─ brain.py
+│  ├─ constants.py
+│  ├─ logger.py
+│  ├─ models.py
+│  ├─ spawner.py
+│  └─ zombie.py
 ├─ assets/
 │  ├─ bg_music.ogg
+│  ├─ hit.mp3
+│  ├─ hit2.wav
+│  ├─ level_up.wav
+│  ├─ miss.wav
 │  ├─ brain.png
 │  ├─ BucketheadZombieSprite_166x144.png (unused)
 │  ├─ ConeheadZombieSprite_166x144.png (unused)
 │  ├─ ZombieSprite_166x144.png
 │  ├─ game_background.png
 │  ├─ hammer.png
-│  ├─ hit.mp3
-│  ├─ hit2.wav
-│  ├─ level_up.wav
-│  ├─ miss.wav
 │  └─ thor.png
-└─ src/
-   ├─ brain.py
-   ├─ constants.py
-   ├─ logger.py
-   ├─ models.py
-   ├─ spawner.py
-   └─ zombie.py
+├─ requirements.txt
+└─ Dockerfile
 ```
 
 ## Run the game
