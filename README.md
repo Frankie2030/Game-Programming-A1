@@ -2,7 +2,7 @@
 
 A Python-based whack-a-mole style game built with Pygame, featuring zombies that emerge from tombstones in a spooky graveyard setting.
 
-# Members
+# Members - Group 6
 | **Student name** | **Student ID** |
 |-----|--------|
 | Nguyễn Ngọc Khôi | 2252378 |
