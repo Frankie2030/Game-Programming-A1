@@ -97,10 +97,10 @@ pyinstaller --onefile --windowed --name "WhackZombie" --add-data "assets:assets"
 | **Left Mouse Button** | Whack zombies / Collect brains |
 | **P** | Pause / Resume game |
 | **F** | Toggle FPS display |
+| **B** | Toggle hitbox display |
 | **R** | Reset current run |
 | **M** | Mute / Unmute audio |
 | **ESC** | Quit game |
-| **SPACE/ENTER** | Start game (from start screen) |
 
 # Asset Sources
 - [Zombie design](https://github.com/aayush-musyaju/plant-vs-zombies/tree/main/public/assets/images/Zombies)
