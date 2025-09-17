@@ -42,6 +42,11 @@ source venv/bin/activate
 python3 -m pip install -r requirements.txt
 ```
 
+Or just install the `pygame` library:
+```bash
+pip install pygame
+```
+
 ## Project Structure
 ```
 A1/
@@ -76,6 +81,12 @@ A1/
 
 ## Run the game
 
+Please make sure to navigate to the correct directory:
+```bash
+cd A1/
+```
+
+We run the entry file which is `main.py`:
 ```bash
 python3 main.py
 ```
